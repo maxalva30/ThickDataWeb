@@ -1,0 +1,236 @@
+
+/* Estilo general de la página */
+.main-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Contenedor del encabezado con sombra y línea divisoria */
+.header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    width: 100%;
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.1);  /* Sombra gris */
+    border-bottom: 2px solid #ccc;  /* Línea divisoria gris clara */
+    background-color: #fff;  /* Fondo blanco para el encabezado */
+}
+
+/* Logo */
+.logo {
+    height: 60px;
+    width: auto;
+}
+
+/* Título principal */
+.main-title {
+    font-family: 'Arial', sans-serif;
+    font-size: 2.5em;
+    color: #333;
+    text-align: center;
+    flex-grow: 1;
+}
+
+/* Subtítulos para secciones */
+.section-title {
+    font-family: 'Arial', sans-serif;
+    font-size: 1.5em;
+    color: #0056b3;  /* Color azul para distinguir */
+    margin-top: 20px;  /* Ajuste para estar más cerca del borde */
+    margin-left: 20px;  /* Sin margen izquierdo */
+    text-align: left; /* Alineación a la izquierda */
+}
+
+/* Contenedor del formulario alineado a la izquierda */
+.form-container {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 10px;
+    margin-left: 20px;  /* Pegado a la izquierda */
+}
+
+/* Tabla de entrada */
+.input-table {
+    padding: 10px;
+    border-collapse: collapse;
+}
+
+/* Estilo de las celdas de etiquetas */
+.label-cell {
+    padding: 10px;
+    font-weight: bold;
+    background-color: black;
+    color: white;
+    width: 200px;
+}
+
+/* Estilo de las celdas de entrada */
+.input-cell {
+    padding: 10px;
+    width: 300px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Estilo del dropdown */
+.dropdown-cell {
+    width: 100%;
+}
+
+/* Contenedor de comentarios */
+.comments-container {
+    margin-top: 20px;
+    margin-left: 20px;  /* Pegado a la izquierda */
+    margin-right: 0px;  /* Agregar margen derecho si es necesario */
+}
+
+/* Box de comentarios */
+.comments-box {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    font-family: 'Arial', sans-serif;
+    font-size: 1em;
+}
+
+/* Contenedor de subida de archivo */
+.upload-container {
+    margin-top: 10px;
+    margin-left: 20px;  /* Pegado a la izquierda */
+    margin-right: 50px;
+}
+
+/* Pie de página con sombra */
+.footer {
+    text-align: center;
+    padding: 10px;
+    background-color: #f1f1f1;
+    font-size: 0.9em;
+    color: #555;
+    width: 100%;
+    box-shadow: 0px -4px 4px rgba(0, 0, 0, 0.1);
+    border-top: 2px solid #ccc;
+    position: fixed
+    bottom: 0;
+}
+
+/* ---------------------------------- */
+/* Ajustes para la disposición en dos columnas */
+/* ---------------------------------- */
+
+/* Contenedor para organizar las dos columnas */
+.content-container {
+    display: flex;
+    justify-content: space-between;  /* Espacio entre columnas */
+    margin-top: 10px;  /* Reducir margen superior */
+    padding: 0 20px;  /* Ajuste del espacio horizontal */
+}
+
+/* Columna izquierda - Información del formulario */
+.left-column {
+    flex: 0 0 35%;  /* Toma el 35% del espacio */
+    padding-right: 20px;
+    margin-left: 0;  /* Pegado a la izquierda */
+    margin-top: 0;  /* Reducir margen superior */
+}
+
+/* Columna derecha - Análisis de datos */
+.right-column {
+    flex: 0 0 65%;  /* Toma el 65% del espacio */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;  /* Alineado al inicio */
+    padding-left: 0;  /* Sin padding izquierdo */
+}
+
+/* Contenedor de análisis */
+.analysis-container {
+    margin-top: 10px;  /* Reducir margen superior */
+    display: flex;
+    justify-content: flex-start;  /* Pegado a la izquierda */
+    flex-wrap: wrap;
+    margin-left: 0;  /* Sin margen izquierdo */
+}
+
+.analysis-box {
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);  /* Sombra ligera */
+    margin-bottom: 20px;
+}
+
+.analysis-box:hover {
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);  /* Efecto hover */
+    transform: scale(1.05);  /* Escalado suave */
+}
+
+.analysis-img {
+    width: 250px;  /* Aumentar tamaño de la imagen */
+    height: 250px;
+    margin-bottom: 10px;
+}
+
+.analysis-text {
+    font-family: 'Arial', sans-serif;
+    font-size: 1.2em;
+    color: #333;
+}
+
+/* ---------------------------------- */
+/* Ajustes para alinear subtítulo y análisis */
+/* ---------------------------------- */
+
+/* Subtítulo en la columna izquierda */
+.left-column .section-title {
+    margin-left: 20px;  /* Pegado a la izquierda */
+}
+
+/* Subtítulo en la columna derecha */
+.right-column .section-title {
+    margin-left: 0;  /* Sin margen izquierdo */
+}
+
+/* ---------------------------------- */
+/* Ajustes para plots */
+/* ---------------------------------- */
+
+/* Contenedor del gráfico */
+.plot-content {
+    display: flex;
+    justify-content: center;  /* Centrar el gráfico horizontalmente */
+    align-items: center;
+    background-color: #f9f9f9; /* Fondo ligero para diferenciar */
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+/* Botón de generación de gráfico */
+.generate-plot-btn {
+    background-color: #0056b3; /* Color de fondo del botón */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-right: 10px;
+}
+
+.generate-plot-btn:hover {
+    background-color: #003d80; /* Color más oscuro en hover */
+}
+
+/* Gráfico */
+.time-series-graph {
+    width: 100%;  /* Hacer que el gráfico ocupe el 100% del contenedor */
+    height: 700px;  /* Altura del gráfico */
+}
+
