@@ -29,7 +29,7 @@ app.layout = html.Div(
         html.Div(id='page-content', style={'flex': '1'}),
         dcc.Store(id='stored-data', storage_type='session'),  # Aquí almacenaremos los datos leídos del archivo Excel
         html.Div(className='footer', children=[
-            html.P("Copyright © 2024 Metso - Quellaveco Operation (NDA)")
+            html.P("Copyright © 2024 Metso")
         ])
     ]
 )
