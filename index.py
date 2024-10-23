@@ -22,7 +22,7 @@ app.layout = html.Div(
             className="header-container",
             children=[
                 html.Img(src='/assets/MetsoLogo.png', className="logo"),
-                html.H1("Metrics Thickeners", className="main-title")
+                html.H1("Thickeners Data Analysis", className="main-title")
             ]
         ),
         dcc.Location(id='url', refresh=False),
