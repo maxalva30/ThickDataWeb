@@ -28,9 +28,7 @@ app.layout = html.Div(
         dcc.Location(id='url', refresh=False),
         html.Div(id='page-content', style={'flex': '1'}),
         dcc.Store(id='stored-data', storage_type='session'),  # Aquí almacenaremos los datos leídos del archivo Excel
-        html.Div(className='footer', children=[
-            html.P("Copyright © 2024 Metso")
-        ]),
+        html.Div(className='footer', children=[html.P("Copyright © 2024 Metso - Quellaveco Operation (NDA)")]),
         # Modal para la barra de progreso
         dbc.Modal(
             [
@@ -72,6 +70,7 @@ def store_uploaded_data(contents, filename):
         except Exception as e:
             print("Error al leer el archivo:", e)
     return None
+
 
 # Callback para el enrutamiento de páginas
 @app.callback(
@@ -234,15 +233,18 @@ def update_output_filename(filename):
     prevent_initial_call=True
 )
 def handle_upload_and_progress(contents, n_intervals, is_open):
+    print("Callback triggered")  # Para depuración
     if contents is not None and not is_open:
-        # Abrir modal cuando se sube un archivo
+        print("Opening modal")  # Para depuración
         return True, 0, "0%"
     
     if is_open:
         if n_intervals < 10:  # Se actualiza la barra hasta el 100%
             progress = (n_intervals + 1) * 10
+            print(f"Progress: {progress}%")  # Para depuración
             return True, progress, f"{progress}%"
         else:
+            print("Closing modal")  # Para depuración
             # Cuando alcanza 100%
             return False, 100, "Carga completa"  # Cerrar modal y finalizar el progreso
     
