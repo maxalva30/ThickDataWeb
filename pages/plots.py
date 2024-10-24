@@ -2,11 +2,11 @@ from dash import dcc, html, Input, Output, State
 import dash
 import plotly.graph_objs as go
 import pandas as pd
-#from app import app
 
+# Registrar la página
 dash.register_page(__name__, path='/plots')
 
-# Layout de la página de análisis con el diseño ajustado
+# Layout de la página de análisis
 layout = html.Div(
     className="main-container",
     children=[
@@ -33,6 +33,23 @@ layout = html.Div(
                             placeholder='Seleccione variable(es) secundaria(s)',
                             multi=True,  # Habilitar selección múltiple
                             style={'width': '250px'},
+                        )
+                    ],
+                    style={'flex': '1', 'margin-right': '20px'}
+                ),
+                # Nuevo Dropdown para seleccionar el período de agrupación
+                html.Div(
+                    children=[
+                        dcc.Dropdown(
+                            id='time-period',
+                            options=[
+                                {'label': '5 Minutos', 'value': '5T'},
+                                {'label': '10 Minutos', 'value': '10T'},
+                                {'label': '30 Minutos', 'value': '30T'},
+                                {'label': '1 Hora', 'value': '1H'}
+                            ],
+                            placeholder='Seleccione período de agrupación',
+                            style={'width': '200px'},
                         )
                     ],
                     style={'flex': '1', 'margin-right': '20px'}
@@ -64,16 +81,30 @@ layout = html.Div(
     [Input('plot-button', 'n_clicks')],
     [State('primary-variable', 'value'),
      State('secondary-variable', 'value'),
+     State('time-period', 'value'),  # Nuevo State para capturar el período seleccionado
      State('stored-data', 'data')]
 )
-def update_graph(n_clicks, primary_vars, secondary_vars, stored_data):
+def update_graph(n_clicks, primary_vars, secondary_vars, time_period, stored_data):
     # Convertir los datos almacenados de vuelta a un DataFrame
     if stored_data is None:
         return [], [], go.Figure()
 
     df = pd.DataFrame(stored_data)
+
+    # Asegurarse de que la columna de fecha sea datetime
+    df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], errors='coerce')
+    
     # Configurar las opciones del dropdown en base a las columnas del DataFrame
     dropdown_options = [{'label': col, 'value': col} for col in df.columns[1:]]  # Excluir la columna de fechas
+
+    # Verificar si se seleccionó un período de agrupación
+    if time_period:
+        # Resamplear los datos para obtener los promedios por el período seleccionado
+        df = df.set_index(df.columns[0])  # Asegurar que la columna de fecha es el índice
+        df_resampled = df.resample(time_period).mean().reset_index()  # Calcular el promedio por período
+    else:
+        # Si no se seleccionó un período, mantener los datos originales
+        df_resampled = df
 
     # Generar la gráfica si hay un clic en el botón y variables seleccionadas
     if n_clicks and primary_vars:
@@ -83,8 +114,8 @@ def update_graph(n_clicks, primary_vars, secondary_vars, stored_data):
         for var in primary_vars:
             fig.add_trace(
                 go.Scatter(
-                    x=df.iloc[:, 0], 
-                    y=df[var], 
+                    x=df_resampled.iloc[:, 0], 
+                    y=df_resampled[var], 
                     mode='lines', 
                     name=var,
                     yaxis='y1'
@@ -96,8 +127,8 @@ def update_graph(n_clicks, primary_vars, secondary_vars, stored_data):
             for var in secondary_vars:
                 fig.add_trace(
                     go.Scatter(
-                        x=df.iloc[:, 0], 
-                        y=df[var], 
+                        x=df_resampled.iloc[:, 0], 
+                        y=df_resampled[var], 
                         mode='lines', 
                         name=var,
                         yaxis='y2'
@@ -113,8 +144,8 @@ def update_graph(n_clicks, primary_vars, secondary_vars, stored_data):
             )
 
         fig.update_layout(
-            title="Time Series Analysis",
-            xaxis_title="Date",
+            title="Análisis de Series Temporales",
+            xaxis_title="Fecha",
             yaxis_title='Primario',
             height=700  # Ajustar la altura del gráfico
         )
