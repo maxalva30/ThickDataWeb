@@ -38,7 +38,7 @@ app.layout = html.Div(
                 dbc.ModalBody([
                     html.Div("Por favor espere mientras se carga el archivo."),
                     dbc.Progress(id="progress-bar", striped=True, animated=True, style={"marginTop": "10px"}),
-                    dcc.Interval(id="interval-progress", interval=500, n_intervals=0)
+                    dcc.Interval(id="interval-progress", interval=250, n_intervals=0)  # Intervalo más pequeño
                 ]),
             ],
             id="loading-modal",
