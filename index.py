@@ -1,6 +1,6 @@
 import dash
 from dash import dcc, html
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output, State, MATCH, ALL
 import dash_bootstrap_components as dbc
 import pandas as pd
 import io
@@ -97,22 +97,131 @@ def display_page(pathname):
     if pathname == '/plots':
         return plots.layout  # Asegúrate de que 'plots.layout' está definido y funciona
     else:
-        # Layout de la página principal (como en tu código original)
+        # Layout de la página principal (completo)
         return html.Div(
             className="content-container",
             children=[
                 html.Div(
                     className="left-column",
                     children=[
-                        # ... Tu contenido de la columna izquierda ...
-                        # (Asegúrate de incluir todo el contenido aquí)
+                        html.H3("Project Information", className="section-title"),
+                        html.Div(
+                            className="form-container",
+                            children=[
+                                html.Table(
+                                    children=[
+                                        html.Tr([
+                                            html.Td(html.Label("Project Name"), className="label-cell"),
+                                            html.Td(dcc.Input(type="text", id="project-name", className="input-cell")),
+                                        ]),
+                                        html.Tr([
+                                            html.Td(html.Label("Operation Name"), className="label-cell"),
+                                            html.Td(dcc.Input(type="text", id="operation-name", className="input-cell")),
+                                        ]),
+                                        html.Tr([
+                                            html.Td(html.Label("Type of Thickener"), className="label-cell"),
+                                            html.Td(dcc.Dropdown(
+                                                id="thickener-type",
+                                                options=[
+                                                    {'label': 'High Rate Thickener', 'value': 'High Rate Thickener'},
+                                                    {'label': 'High Compression Thickener', 'value': 'High Compression Thickener'},
+                                                    {'label': 'Paste Thickener', 'value': 'Paste Thickener'},
+                                                    {'label': 'Clarifier Thickener', 'value': 'Clarifier Thickener'},
+                                                    {'label': 'HRT-S', 'value': 'HRT-S'},
+                                                    {'label': 'Deep Cone Settler', 'value': 'Deep Cone Settler'},
+                                                    {'label': 'Non-Metso Thickener', 'value': 'Non-Metso Thickener'}
+                                                ],
+                                                className="dropdown-cell"
+                                            )),
+                                        ]),
+                                        html.Tr([
+                                            html.Td(html.Label("User Name"), className="label-cell"),
+                                            html.Td(dcc.Input(type="text", id="user-name", className="input-cell")),
+                                        ])
+                                    ],
+                                    className="input-table"
+                                )
+                            ]
+                        ),
+                        html.H3("Technical Information", className="section-title"),
+                        html.Div(
+                            className="form-container",
+                            children=[
+                                html.Table(
+                                    children=[
+                                        html.Tr([
+                                            html.Td(html.Label("Specific Gravity (-)"), className="label-cell"),
+                                            html.Td(dcc.Input(type="number", id="specific-gravity", className="input-cell")),
+                                        ]),
+                                        html.Tr([
+                                            html.Td(html.Label("Flocculant Strength (%)"), className="label-cell"),
+                                            html.Td(dcc.Input(type="number", id="flocculant-strength", className="input-cell")),
+                                        ])
+                                    ],
+                                    className="input-table"
+                                )
+                            ]
+                        ),
+                        html.H3("Raw Data Entry", className="section-title"),
+                        html.Div(
+                            className="upload-container",
+                            children=[
+                                dcc.Upload(
+                                    id='upload-data',
+                                    children=html.Div([html.Span('Drop or Select a File', id='upload-text')]),
+                                    style={
+                                        'width': '300px',
+                                        'height': '60px',
+                                        'lineHeight': '60px',
+                                        'borderWidth': '1px',
+                                        'borderStyle': 'dashed',
+                                        'borderRadius': '5px',
+                                        'textAlign': 'center',
+                                        'backgroundColor': '#f9f9f9',
+                                        'cursor': 'pointer',
+                                    },
+                                    multiple=False
+                                ),
+                                html.Div(id='output-file-upload')
+                            ]
+                        ),
+                        html.H3("Comments", className="section-title"),
+                        html.Div(
+                            className="comments-container",
+                            children=[
+                                dcc.Textarea(
+                                    id="comments",
+                                    className="comments-box",
+                                    placeholder="Enter any additional comments here...",
+                                    style={'width': '80%', 'height': 150}
+                                )
+                            ]
+                        )
                     ],
                     style={'width': '30%', 'padding': '20px'}
                 ),
                 html.Div(
                     className="right-column",
                     children=[
-                        # ... Tu contenido de la columna derecha ...
+                        html.H3("Data Analysis", className="section-title"),
+                        html.Div(
+                            className="analysis-container",
+                            children=[
+                                html.A(
+                                    href="/plots",
+                                    children=[
+                                        html.Div(
+                                            children=[
+                                                html.Img(src='/assets/timeimg.png', className="analysis-img"),
+                                                html.P("Time Series", className="analysis-text")
+                                            ],
+                                            className="analysis-box"
+                                        )
+                                    ]
+                                )
+                            ],
+                            style={'display': 'flex', 'justify-content': 'center'}
+                        )
                     ],
                     style={'width': '70%', 'padding': '20px'}
                 )
