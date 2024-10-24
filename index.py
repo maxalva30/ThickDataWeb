@@ -226,7 +226,8 @@ def update_output_filename(filename):
 @app.callback(
     [Output('loading-modal', 'is_open'),
      Output('progress-bar', 'value'),
-     Output('progress-bar', 'label')],
+     Output('progress-bar', 'label'),
+     Output('interval-progress', 'n_intervals')],
     [Input('upload-data', 'contents'),
      Input('interval-progress', 'n_intervals')],
     [State('loading-modal', 'is_open')],
@@ -234,17 +235,17 @@ def update_output_filename(filename):
 )
 def handle_upload_and_progress(contents, n_intervals, is_open):
     if contents is not None and not is_open:
-        return True, 0, "0%"  # Abre el modal y resetea el progreso
-
-    if is_open:
-        if n_intervals < 10:  # Aumenta el progreso hasta el 100%
-            progress = (n_intervals + 1) * 10
-            return True, progress, f"{progress}%"
-        else:
-            # Al alcanzar el 100%, cierra el modal y muestra "Carga completa"
-            return False, 100, "Carga completa"  
+        # Abrir modal cuando se sube un archivo
+        return True, 0, "0%", 0
     
-    return is_open, 0, ""
+    if is_open:
+        progress = min(100, (n_intervals + 1) * 10)
+        if progress >= 100:
+            time.sleep(1)  # Simulación de finalización de tarea
+            return False, 100, "Carga completa", 0  # Resetear intervalos cuando se alcanza el 100%
+        return True, progress, f"{progress}%", n_intervals
+    
+    return is_open, 0, "", n_intervals
 
 if __name__ == "__main__":
     app.run_server(debug=True)
