@@ -1,14 +1,13 @@
+import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import pandas as pd
 import io
 import base64
-from dash import Dash
-import dash  # Importamos dash para usar dash.no_update
 
 # Crear la aplicación Dash
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 server = app.server
 
 from pages import plots  # Importar la subpágina de análisis
@@ -46,6 +45,8 @@ app.layout = html.Div(
             backdrop='static',  # Evita que se cierre al hacer clic fuera del modal
             keyboard=False  # Evita que se cierre al presionar Esc
         ),
+        # Mover el Interval fuera del modal
+        dcc.Interval(id="interval-progress", interval=500, n_intervals=0, disabled=True),
     ]
 )
 
@@ -53,8 +54,8 @@ app.layout = html.Div(
 @app.callback(
     [Output('stored-data', 'data'),
      Output('upload-status', 'data')],
-    [Input('upload-data', 'contents')],
-    [State('upload-data', 'filename')],
+    Input('upload-data', 'contents'),
+    State('upload-data', 'filename'),
     prevent_initial_call=True
 )
 def store_uploaded_data(contents, filename):
@@ -64,10 +65,10 @@ def store_uploaded_data(contents, filename):
         content_type, content_string = contents.split(',')
         decoded = base64.b64decode(content_string)
         try:
-            # Leer el archivo Excel completo y luego seleccionar las columnas deseadas
+            # Procesar el archivo Excel
             df = pd.read_excel(io.BytesIO(decoded), sheet_name=0, skiprows=6, engine='openpyxl')
 
-            # Seleccionar las columnas que corresponden al rango de D a N
+            # Seleccionar las columnas deseadas
             df = df.iloc[:, 3:14]  # Desde la columna D hasta la N
 
             # Asegurarse de que la primera columna sea tratada como datetime
@@ -83,9 +84,11 @@ def store_uploaded_data(contents, filename):
             # Actualizar estado a 'error'
             upload_status = 'error'
             return None, upload_status
-    return dash.no_update, dash.no_update
+    else:
+        # Si no hay contenido, no actualizamos nada
+        return dash.no_update, dash.no_update
 
-# Callback para el enrutamiento de páginas
+# Callback para el enrutamiento de páginas (sin cambios)
 @app.callback(
     Output('page-content', 'children'),
     Input('url', 'pathname')
@@ -94,139 +97,16 @@ def display_page(pathname):
     if pathname == '/plots':
         return plots.layout
     else:
-        # Layout de la página principal
+        # Aquí incluye todo el contenido de tu página principal como lo tienes en tu código original
         return html.Div(
             className="content-container",
             children=[
-                html.Div(
-                    className="left-column",
-                    children=[
-                        html.H3("Project Information", className="section-title"),
-                        html.Div(
-                            className="form-container",
-                            children=[
-                                html.Table(
-                                    children=[
-                                        html.Tr([
-                                            html.Td(html.Label("Project Name"), className="label-cell"),
-                                            html.Td(dcc.Input(type="text", id="project-name", className="input-cell")),
-                                        ]),
-                                        html.Tr([
-                                            html.Td(html.Label("Operation Name"), className="label-cell"),
-                                            html.Td(dcc.Input(type="text", id="operation-name", className="input-cell")),
-                                        ]),
-                                        html.Tr([
-                                            html.Td(html.Label("Type of Thickener"), className="label-cell"),
-                                            html.Td(dcc.Dropdown(
-                                                id="thickener-type",
-                                                options=[
-                                                    {'label': 'High Rate Thickener', 'value': 'High Rate Thickener'},
-                                                    {'label': 'High Compression Thickener', 'value': 'High Compression Thickener'},
-                                                    {'label': 'Paste Thickener', 'value': 'Paste Thickener'},
-                                                    {'label': 'Clarifier Thickener', 'value': 'Clarifier Thickener'},
-                                                    {'label': 'HRT-S', 'value': 'HRT-S'},
-                                                    {'label': 'Deep Cone Settler', 'value': 'Deep Cone Settler'},
-                                                    {'label': 'Non-Metso Thickener', 'value': 'Non-Metso Thickener'}
-                                                ],
-                                                className="dropdown-cell"
-                                            )),
-                                        ]),
-                                        html.Tr([
-                                            html.Td(html.Label("User Name"), className="label-cell"),
-                                            html.Td(dcc.Input(type="text", id="user-name", className="input-cell")),
-                                        ])
-                                    ],
-                                    className="input-table"
-                                )
-                            ]
-                        ),
-                        html.H3("Technical Information", className="section-title"),
-                        html.Div(
-                            className="form-container",
-                            children=[
-                                html.Table(
-                                    children=[
-                                        html.Tr([
-                                            html.Td(html.Label("Specific Gravity (-)"), className="label-cell"),
-                                            html.Td(dcc.Input(type="number", id="specific-gravity", className="input-cell")),
-                                        ]),
-                                        html.Tr([
-                                            html.Td(html.Label("Flocculant Strength (%)"), className="label-cell"),
-                                            html.Td(dcc.Input(type="number", id="flocculant-strength", className="input-cell")),
-                                        ])
-                                    ],
-                                    className="input-table"
-                                )
-                            ]
-                        ),
-                        html.H3("Raw Data Entry", className="section-title"),
-                        html.Div(
-                            className="upload-container",
-                            children=[
-                                dcc.Upload(
-                                    id='upload-data',
-                                    children=html.Div([html.Span('Drop or Select a File', id='upload-text')]),
-                                    style={
-                                        'width': '300px',
-                                        'height': '60px',
-                                        'lineHeight': '60px',
-                                        'borderWidth': '1px',
-                                        'borderStyle': 'dashed',
-                                        'borderRadius': '5px',
-                                        'textAlign': 'center',
-                                        'backgroundColor': '#f9f9f9',
-                                        'cursor': 'pointer',
-                                    },
-                                    multiple=False
-                                ),
-                                html.Div(id='output-file-upload')
-                            ]
-                        ),
-                        html.H3("Comments", className="section-title"),
-                        html.Div(
-                            className="comments-container",
-                            children=[
-                                dcc.Textarea(
-                                    id="comments",
-                                    className="comments-box",
-                                    placeholder="Enter any additional comments here...",
-                                    style={'width': '80%', 'height': 150}
-                                )
-                            ]
-                        )
-                    ],
-                    style={'width': '30%', 'padding': '20px'}
-                ),
-                html.Div(
-                    className="right-column",
-                    children=[
-                        html.H3("Data Analysis", className="section-title"),
-                        html.Div(
-                            className="analysis-container",
-                            children=[
-                                html.A(
-                                    href="/plots",
-                                    children=[
-                                        html.Div(
-                                            children=[
-                                                html.Img(src='/assets/timeimg.png', className="analysis-img"),
-                                                html.P("Time Series", className="analysis-text")
-                                            ],
-                                            className="analysis-box"
-                                        )
-                                    ]
-                                )
-                            ],
-                            style={'display': 'flex', 'justify-content': 'center'}
-                        )
-                    ],
-                    style={'width': '70%', 'padding': '20px'}
-                )
+                # ... Tu código original para la página principal ...
             ],
             style={'display': 'flex', 'flexDirection': 'row'}
         )
 
-# Callback para mostrar el nombre del archivo cargado
+# Callback para mostrar el nombre del archivo cargado (sin cambios)
 @app.callback(
     Output('upload-text', 'children'),
     Input('upload-data', 'filename')
@@ -238,20 +118,36 @@ def update_output_filename(filename):
 
 # Callback para manejar el modal y la barra de progreso
 @app.callback(
-    Output('loading-modal', 'is_open'),
-    [Input('upload-data', 'contents'),
-     Input('upload-status', 'data')],
+    [Output('loading-modal', 'is_open'),
+     Output('progress-bar', 'value'),
+     Output('progress-bar', 'label'),
+     Output('interval-progress', 'disabled'),
+     Output('interval-progress', 'n_intervals')],
+    [Input('upload-data', 'filename'),
+     Input('upload-status', 'data'),
+     Input('interval-progress', 'n_intervals')],
     [State('loading-modal', 'is_open')],
     prevent_initial_call=True
 )
-def handle_upload_modal(contents, upload_status, is_open):
-    if upload_status == 'processing' and not is_open:
-        # Abrir el modal cuando comienza el procesamiento
-        return True
-    elif upload_status == 'done' and is_open:
-        # Cerrar el modal cuando el procesamiento ha terminado
-        return False
-    return is_open
+def handle_upload_and_progress(filename, upload_status, n_intervals, is_open):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return is_open, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if triggered_id == 'upload-data' and filename is not None:
+        # Abrir modal, habilitar intervalo y reiniciar contador
+        return True, 0, "0%", False, 0
+    elif triggered_id == 'interval-progress' and is_open:
+        if upload_status == 'done':
+            # Cerrar modal, deshabilitar intervalo
+            return False, 100, "Carga completa", True, n_intervals
+        else:
+            # Incrementar progreso
+            progress = min((n_intervals + 1) * 10, 99)
+            return True, progress, f"{progress}%", False, n_intervals
+    return is_open, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
 if __name__ == "__main__":
     app.run_server(debug=True)
