@@ -1,11 +1,11 @@
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
-#from app import app
 import pandas as pd
 import io
 import base64
 from dash import Dash
+import time
 
 # Crear la aplicación Dash
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
@@ -22,7 +22,7 @@ app.layout = html.Div(
             className="header-container",
             children=[
                 html.Img(src='/assets/MetsoLogo.png', className="logo"),
-                html.H1("Thickeners Data Analysis", className="main-title")
+                html.H1("Thickener Operational Data Analysis", className="main-title")
             ]
         ),
         dcc.Location(id='url', refresh=False),
@@ -30,18 +30,29 @@ app.layout = html.Div(
         dcc.Store(id='stored-data', storage_type='session'),  # Aquí almacenaremos los datos leídos del archivo Excel
         html.Div(className='footer', children=[
             html.P("Copyright © 2024 Metso")
-        ])
+        ]),
+        # Modal para la barra de progreso
+        dbc.Modal(
+            [
+                dbc.ModalHeader("Cargando archivo..."),
+                dbc.ModalBody([
+                    html.Div("Por favor espere mientras se carga el archivo."),
+                    dbc.Progress(id="progress-bar", striped=True, animated=True, style={"marginTop": "10px"}),
+                    dcc.Interval(id="interval-progress", interval=500, n_intervals=0)
+                ]),
+            ],
+            id="loading-modal",
+            is_open=False,
+        ),
     ]
 )
 
-
+# Callback para almacenar los datos del archivo cargado
 @app.callback(
     Output('stored-data', 'data'),
     Input('upload-data', 'contents'),
     State('upload-data', 'filename')
 )
-
-
 def store_uploaded_data(contents, filename):
     if contents is not None:
         content_type, content_string = contents.split(',')
@@ -52,17 +63,15 @@ def store_uploaded_data(contents, filename):
 
             # Seleccionar las columnas que corresponden al rango de D a N
             df = df.iloc[:, 3:14]  # Esto selecciona las columnas desde la cuarta (D) hasta la décimo cuarta (N)
-            
+
             # Asegurarse de que la primera columna sea tratada como datetime
             df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], errors='coerce')
-            
+
             # Convertir el DataFrame a un diccionario para almacenarlo
             return df.to_dict('records')
         except Exception as e:
             print("Error al leer el archivo:", e)
     return None
-
-
 
 # Callback para el enrutamiento de páginas
 @app.callback(
@@ -204,6 +213,7 @@ def display_page(pathname):
             style={'display': 'flex', 'flexDirection': 'row'}
         )
 
+# Callback para mostrar el nombre del archivo cargado
 @app.callback(
     Output('upload-text', 'children'),
     Input('upload-data', 'filename')
@@ -213,6 +223,30 @@ def update_output_filename(filename):
         return html.Span([html.Img(src='/assets/excel-icon.png', style={'width': '20px', 'marginRight': '10px'}), f"{filename}"])
     return "Drop or Select a File"
 
+# Callback para manejar la barra de progreso y el modal
+@app.callback(
+    [Output('loading-modal', 'is_open'),
+     Output('progress-bar', 'value'),
+     Output('progress-bar', 'label')],
+    [Input('upload-data', 'contents'),
+     Input('interval-progress', 'n_intervals')],
+    [State('loading-modal', 'is_open')],
+    prevent_initial_call=True
+)
+def handle_upload_and_progress(contents, n_intervals, is_open):
+    if contents is not None and not is_open:
+        # Abrir modal cuando se sube un archivo
+        return True, 0, "0%"
+    
+    if is_open:
+        if n_intervals < 10:  # Se actualiza la barra hasta el 100%
+            progress = (n_intervals + 1) * 10
+            return True, progress, f"{progress}%"
+        else:
+            # Cuando alcanza 100%
+            return False, 100, "Carga completa"  # Cerrar modal y finalizar el progreso
+    
+    return is_open, 0, ""
 
 if __name__ == "__main__":
-    app.run_server(debug=False)
+    app.run_server(debug=True)
