@@ -5,7 +5,6 @@ import pandas as pd
 import io
 import base64
 from dash import Dash
-import time
 
 # Crear la aplicación Dash
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
@@ -17,6 +16,7 @@ from pages import plots  # Importar la subpágina de análisis
 app.layout = html.Div(
     className="main-container",
     children=[
+        # Contenedor del encabezado
         html.Div(
             className="header-container",
             children=[
@@ -30,14 +30,13 @@ app.layout = html.Div(
         html.Div(className='footer', children=[
             html.P("Copyright © 2024 Metso")
         ]),
-        # Modal para la barra de progreso
+        # Modal para la carga del archivo
         dbc.Modal(
             [
                 dbc.ModalHeader("Cargando archivo..."),
                 dbc.ModalBody([
                     html.Div("Por favor espere mientras se carga el archivo."),
                     dbc.Progress(id="progress-bar", striped=True, animated=True, style={"marginTop": "10px"}),
-                    dcc.Interval(id="interval-progress", interval=500, n_intervals=0)
                 ]),
             ],
             id="loading-modal",
@@ -162,6 +161,7 @@ def display_page(pathname):
                                         'borderRadius': '5px',
                                         'textAlign': 'center',
                                         'backgroundColor': '#f9f9f9',
+                                        'cursor': 'pointer',
                                     },
                                     multiple=False
                                 ),
@@ -222,30 +222,22 @@ def update_output_filename(filename):
         return html.Span([html.Img(src='/assets/excel-icon.png', style={'width': '20px', 'marginRight': '10px'}), f"{filename}"])
     return "Drop or Select a File"
 
-# Callback para manejar la barra de progreso y el modal
+# Callback para manejar el modal de carga
 @app.callback(
-    [Output('loading-modal', 'is_open'),
-     Output('progress-bar', 'value'),
-     Output('progress-bar', 'label')],
-    [Input('upload-data', 'contents'),
-     Input('interval-progress', 'n_intervals')],
+    Output('loading-modal', 'is_open'),
+    [Input('upload-data', 'filename'),
+     Input('upload-data', 'contents')],
     [State('loading-modal', 'is_open')],
     prevent_initial_call=True
 )
-def handle_upload_and_progress(contents, n_intervals, is_open):
-    if contents is not None and not is_open:
-        # Abrir modal cuando se sube un archivo
-        return True, 0, "0%"
-    
-    if is_open:
-        if n_intervals < 10:  # Se actualiza la barra hasta el 100%
-            progress = (n_intervals + 1) * 10
-            return True, progress, f"{progress}%"
-        else:
-            # Cuando alcanza 100%
-            return False, 100, "Carga completa"  # Cerrar modal y finalizar el progreso
-    
-    return is_open, 0, ""
+def handle_upload_modal(filename, contents, is_open):
+    if filename and not is_open:
+        # Abrir modal cuando se selecciona un archivo
+        return True
+    if contents and is_open:
+        # Cerrar modal cuando el contenido está disponible
+        return False
+    return is_open
 
 if __name__ == "__main__":
     app.run_server(debug=True)
