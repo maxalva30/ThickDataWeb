@@ -28,7 +28,7 @@ app.layout = html.Div(
         dcc.Location(id='url', refresh=False),
         html.Div(id='page-content', style={'flex': '1'}),
         dcc.Store(id='stored-data', storage_type='session'),  # Aquí almacenaremos los datos leídos del archivo Excel
-        html.Div(className='footer', children=[html.P("Copyright © 2024")]),
+        html.Div(className='footer', children=[html.P("Metso Copyright © 2024")]),
         # Modal para la barra de progreso
         dbc.Modal(
             [
