@@ -6,6 +6,7 @@ import io
 import base64
 from dash import Dash
 import time
+import threading
 
 # Crear la aplicación Dash
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
@@ -38,7 +39,7 @@ app.layout = html.Div(
                 dbc.ModalBody([
                     html.Div("Por favor espere mientras se carga el archivo."),
                     dbc.Progress(id="progress-bar", striped=True, animated=True, style={"marginTop": "10px"}),
-                    dcc.Interval(id="interval-progress", interval=250, n_intervals=0)  # Intervalo más pequeño
+                    dcc.Interval(id="interval-progress", interval=500, n_intervals=0)  # Simular progreso cada 500ms
                 ]),
             ],
             id="loading-modal",
@@ -66,6 +67,9 @@ def store_uploaded_data(contents, filename):
 
             # Asegurarse de que la primera columna sea tratada como datetime
             df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], errors='coerce')
+
+            # Simular una carga lenta para probar el progreso
+            time.sleep(3)
 
             # Convertir el DataFrame a un diccionario para almacenarlo
             return df.to_dict('records')
