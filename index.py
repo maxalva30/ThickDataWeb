@@ -233,20 +233,16 @@ def update_output_filename(filename):
     prevent_initial_call=True
 )
 def handle_upload_and_progress(contents, n_intervals, is_open):
-    print("Callback triggered")  # Para depuración
     if contents is not None and not is_open:
-        print("Opening modal")  # Para depuración
-        return True, 0, "0%"
-    
+        return True, 0, "0%"  # Abre el modal y resetea el progreso
+
     if is_open:
-        if n_intervals < 10:  # Se actualiza la barra hasta el 100%
+        if n_intervals < 10:  # Aumenta el progreso hasta el 100%
             progress = (n_intervals + 1) * 10
-            print(f"Progress: {progress}%")  # Para depuración
             return True, progress, f"{progress}%"
         else:
-            print("Closing modal")  # Para depuración
-            # Cuando alcanza 100%
-            return False, 100, "Carga completa"  # Cerrar modal y finalizar el progreso
+            # Al alcanzar el 100%, cierra el modal y muestra "Carga completa"
+            return False, 100, "Carga completa"  
     
     return is_open, 0, ""
 
