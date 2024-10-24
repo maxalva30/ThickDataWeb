@@ -28,7 +28,9 @@ app.layout = html.Div(
         dcc.Location(id='url', refresh=False),
         html.Div(id='page-content', style={'flex': '1'}),
         dcc.Store(id='stored-data', storage_type='session'),  # Aquí almacenaremos los datos leídos del archivo Excel
-        html.Div(className='footer', children=[html.P("Metso Copyright © 2024")]),
+        html.Div(className='footer', children=[
+            html.P("Copyright © 2024 Metso")
+        ]),
         # Modal para la barra de progreso
         dbc.Modal(
             [
@@ -70,7 +72,6 @@ def store_uploaded_data(contents, filename):
         except Exception as e:
             print("Error al leer el archivo:", e)
     return None
-
 
 # Callback para el enrutamiento de páginas
 @app.callback(
@@ -226,8 +227,7 @@ def update_output_filename(filename):
 @app.callback(
     [Output('loading-modal', 'is_open'),
      Output('progress-bar', 'value'),
-     Output('progress-bar', 'label'),
-     Output('interval-progress', 'n_intervals')],
+     Output('progress-bar', 'label')],
     [Input('upload-data', 'contents'),
      Input('interval-progress', 'n_intervals')],
     [State('loading-modal', 'is_open')],
@@ -236,16 +236,17 @@ def update_output_filename(filename):
 def handle_upload_and_progress(contents, n_intervals, is_open):
     if contents is not None and not is_open:
         # Abrir modal cuando se sube un archivo
-        return True, 0, "0%", 0
+        return True, 0, "0%"
     
     if is_open:
-        progress = min(100, (n_intervals + 1) * 10)
-        if progress >= 100:
-            time.sleep(1)  # Simulación de finalización de tarea
-            return False, 100, "Carga completa", 0  # Resetear intervalos cuando se alcanza el 100%
-        return True, progress, f"{progress}%", n_intervals
+        if n_intervals < 10:  # Se actualiza la barra hasta el 100%
+            progress = (n_intervals + 1) * 10
+            return True, progress, f"{progress}%"
+        else:
+            # Cuando alcanza 100%
+            return False, 100, "Carga completa"  # Cerrar modal y finalizar el progreso
     
-    return is_open, 0, "", n_intervals
+    return is_open, 0, ""
 
 if __name__ == "__main__":
     app.run_server(debug=True)
