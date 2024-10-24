@@ -5,7 +5,6 @@ import pandas as pd
 import io
 import base64
 from dash import Dash
-import threading
 import time
 
 # Crear la aplicación Dash
@@ -47,75 +46,31 @@ app.layout = html.Div(
     ]
 )
 
-# Función para cargar el archivo en segundo plano
-def process_file(contents, filename, output_dict):
-    content_type, content_string = contents.split(',')
-    decoded = base64.b64decode(content_string)
-    try:
-        # Simular tiempo de procesamiento largo
-        time.sleep(2)
-        
-        # Leer el archivo Excel completo y luego seleccionar las columnas deseadas
-        df = pd.read_excel(io.BytesIO(decoded), sheet_name=0, skiprows=6, engine='openpyxl')
-
-        # Seleccionar las columnas que corresponden al rango de D a N
-        df = df.iloc[:, 3:14]  # Esto selecciona las columnas desde la cuarta (D) hasta la décimo cuarta (N)
-
-        # Asegurarse de que la primera columna sea tratada como datetime
-        df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], errors='coerce')
-
-        # Guardar el resultado en el diccionario
-        output_dict['data'] = df.to_dict('records')
-    except Exception as e:
-        output_dict['data'] = None
-        output_dict['error'] = str(e)
-
-# Callback para manejar la carga de archivos y simular progreso
+# Callback para almacenar los datos del archivo cargado
 @app.callback(
-    [Output('loading-modal', 'is_open'),
-     Output('stored-data', 'data'),
-     Output('progress-bar', 'value'),
-     Output('progress-bar', 'label')],
-    [Input('upload-data', 'contents'),
-     Input('interval-progress', 'n_intervals')],
-    [State('upload-data', 'filename'),
-     State('loading-modal', 'is_open')],
-    prevent_initial_call=True
+    Output('stored-data', 'data'),
+    Input('upload-data', 'contents'),
+    State('upload-data', 'filename')
 )
-def handle_upload_and_progress(contents, n_intervals, filename, is_open):
-    progress_max_intervals = 20  # Simulará una barra de progreso durante 20 intervalos (10 segundos)
-    if contents is not None and not is_open:
-        # Iniciar el proceso de carga en segundo plano usando un thread
-        global output_dict
-        output_dict = {'data': None, 'error': None}
-        thread = threading.Thread(target=process_file, args=(contents, filename, output_dict))
-        thread.start()
+def store_uploaded_data(contents, filename):
+    if contents is not None:
+        content_type, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string)
+        try:
+            # Leer el archivo Excel completo y luego seleccionar las columnas deseadas
+            df = pd.read_excel(io.BytesIO(decoded), sheet_name=0, skiprows=6, engine='openpyxl')
 
-        # Abrir modal cuando se sube un archivo
-        return True, None, 0, "0%"
+            # Seleccionar las columnas que corresponden al rango de D a N
+            df = df.iloc[:, 3:14]  # Esto selecciona las columnas desde la cuarta (D) hasta la décimo cuarta (N)
 
-    # Actualizar la barra de progreso mientras el archivo se procesa
-    if is_open:
-        progress = min(n_intervals * 100 // progress_max_intervals, 100)
-        label = f"{progress}%"
+            # Asegurarse de que la primera columna sea tratada como datetime
+            df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], errors='coerce')
 
-        if output_dict.get('data') is not None or output_dict.get('error') is not None:
-            # Cerrar el modal si el archivo ha terminado de procesarse o si hay un error
-            return False, output_dict.get('data'), 100, "Carga completa" if output_dict.get('data') else "Error"
-
-        return True, None, progress, label
-
-    return is_open, None, 0, ""
-
-# Callback para mostrar el nombre del archivo cargado
-@app.callback(
-    Output('upload-text', 'children'),
-    Input('upload-data', 'filename')
-)
-def update_output_filename(filename):
-    if filename:
-        return html.Span([html.Img(src='/assets/excel-icon.png', style={'width': '20px', 'marginRight': '10px'}), f"{filename}"])
-    return "Drop or Select a File"
+            # Convertir el DataFrame a un diccionario para almacenarlo
+            return df.to_dict('records')
+        except Exception as e:
+            print("Error al leer el archivo:", e)
+    return None
 
 # Callback para el enrutamiento de páginas
 @app.callback(
@@ -256,6 +211,41 @@ def display_page(pathname):
             ],
             style={'display': 'flex', 'flexDirection': 'row'}
         )
+
+# Callback para mostrar el nombre del archivo cargado
+@app.callback(
+    Output('upload-text', 'children'),
+    Input('upload-data', 'filename')
+)
+def update_output_filename(filename):
+    if filename:
+        return html.Span([html.Img(src='/assets/excel-icon.png', style={'width': '20px', 'marginRight': '10px'}), f"{filename}"])
+    return "Drop or Select a File"
+
+# Callback para manejar la barra de progreso y el modal
+@app.callback(
+    [Output('loading-modal', 'is_open'),
+     Output('progress-bar', 'value'),
+     Output('progress-bar', 'label')],
+    [Input('upload-data', 'contents'),
+     Input('interval-progress', 'n_intervals')],
+    [State('loading-modal', 'is_open')],
+    prevent_initial_call=True
+)
+def handle_upload_and_progress(contents, n_intervals, is_open):
+    if contents is not None and not is_open:
+        # Abrir modal cuando se sube un archivo
+        return True, 0, "0%"
+    
+    if is_open:
+        if n_intervals < 10:  # Se actualiza la barra hasta el 100%
+            progress = (n_intervals + 1) * 10
+            return True, progress, f"{progress}%"
+        else:
+            # Cuando alcanza 100%
+            return False, 100, "Carga completa"  # Cerrar modal y finalizar el progreso
+    
+    return is_open, 0, ""
 
 if __name__ == "__main__":
     app.run_server(debug=True)
