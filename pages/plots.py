@@ -2,78 +2,153 @@ from dash import dcc, html, Input, Output, State
 import dash
 import plotly.graph_objs as go
 import pandas as pd
+import plotly.io as pio  # Necesario para guardar el gráfico como HTML
+from datetime import datetime  # Para nombrar el archivo con la fecha actual
 
 # Registrar la página
 dash.register_page(__name__, path='/plots')
 
-# Layout de la página de análisis
+# ==========================
+# Layout de la página /plots
+# ==========================
 layout = html.Div(
     className="main-container",
     children=[
-        # Contenedor de opciones (Dropdowns y botón)
+        # ------------------------------
+        # Barra de controles y opciones
+        # ------------------------------
         html.Div(
             className="options-container",
-            style={'display': 'flex', 'justify-content': 'space-between', 'align-items': 'center', 'margin': '20px'},
+            style={
+                'display': 'flex',
+                'justify-content': 'space-between',
+                'align-items': 'center',
+                'flex-wrap': 'wrap',
+                'margin': '20px'
+            },
             children=[
+                # Variables primarias (eje y1)
                 html.Div(
                     children=[
                         dcc.Dropdown(
                             id='primary-variable',
-                            placeholder='Seleccione variable(es) primaria(s)',
-                            multi=True,  # Habilitar selección múltiple
+                            placeholder='Choose primary variables',
+                            multi=True,
                             style={'width': '250px'},
                         )
                     ],
                     style={'flex': '1', 'margin-right': '20px'}
                 ),
+                # Variables secundarias (eje y2)
                 html.Div(
                     children=[
                         dcc.Dropdown(
                             id='secondary-variable',
-                            placeholder='Seleccione variable(es) secundaria(s)',
-                            multi=True,  # Habilitar selección múltiple
+                            placeholder='Choose secondary variables',
+                            multi=True,
                             style={'width': '250px'},
                         )
                     ],
                     style={'flex': '1', 'margin-right': '20px'}
                 ),
-                # Nuevo Dropdown para seleccionar el período de agrupación
+                # Periodo de muestreo / resampleo
                 html.Div(
                     children=[
                         dcc.Dropdown(
                             id='time-period',
                             options=[
-                                {'label': '5 Minutos', 'value': '5T'},
-                                {'label': '10 Minutos', 'value': '10T'},
-                                {'label': '30 Minutos', 'value': '30T'},
-                                {'label': '1 Hora', 'value': '1H'}
+                                {'label': '5 Minutes', 'value': '5T'},
+                                {'label': '10 Minutes', 'value': '10T'},
+                                {'label': '30 Minutes', 'value': '30T'},
+                                {'label': '1 Hour', 'value': '1H'}
                             ],
-                            placeholder='Seleccione período de agrupación',
+                            placeholder='Choose time period',
                             style={'width': '200px'},
                         )
                     ],
                     style={'flex': '1', 'margin-right': '20px'}
                 ),
-                html.Button('Graficar', id='plot-button', className='btn btn-primary', style={'margin-right': '20px'})
+
+                # ---------------------------
+                # Customer input – Línea #1
+                # ---------------------------
+                html.Div(
+                    children=[
+                        html.Label('Customer Input N°1', style={'margin-right': '6px'}),
+                        dcc.Input(
+                            id='line1-value',
+                            type='number',
+                            placeholder='Y value',
+                            style={'width': '120px', 'margin-right': '6px'}
+                        ),
+                        dcc.Dropdown(
+                            id='axis1-choice',
+                            options=[
+                                {'label': 'Primary', 'value': 'y1'},
+                                {'label': 'Secondary', 'value': 'y2'}
+                            ],
+                            placeholder='Axis',
+                            style={'width': '110px'}
+                        )
+                    ],
+                    style={'display': 'flex', 'align-items': 'center', 'margin-right': '20px'}
+                ),
+
+                # ---------------------------
+                # Customer input – Línea #2
+                # ---------------------------
+                html.Div(
+                    children=[
+                        html.Label('N°2', style={'margin-right': '6px'}),
+                        dcc.Input(
+                            id='line2-value',
+                            type='number',
+                            placeholder='Y value',
+                            style={'width': '120px', 'margin-right': '6px'}
+                        ),
+                        dcc.Dropdown(
+                            id='axis2-choice',
+                            options=[
+                                {'label': 'Primary', 'value': 'y1'},
+                                {'label': 'Secondary', 'value': 'y2'}
+                            ],
+                            placeholder='Axis',
+                            style={'width': '110px'}
+                        )
+                    ],
+                    style={'display': 'flex', 'align-items': 'center', 'margin-right': '20px'}
+                ),
+
+                # Botón para generar el gráfico
+                html.Button('Plot graph', id='plot-button', className='btn btn-primary', style={'margin-right': '20px'})
             ]
         ),
-        
-        # Contenedor del gráfico
+
+        # ----------------
+        # Contenedor gráfico
+        # ----------------
         html.Div(
             className="graph-container",
-            style={'width': '100%', 'display': 'flex', 'justify-content': 'center'},
+            style={'width': '100%', 'display': 'flex', 'justify-content': 'center', 'position': 'relative'},
             children=[
                 dcc.Graph(
                     id='time-series-graph',
                     className='time-series-graph',
                     config={'displayModeBar': True},
-                )
+                ),
+                dcc.Download(id="download-graph"),
+
+                # Botón de guardado (HTML)
+                html.Button('Save', id='save-button', className='btn btn-secondary',
+                            style={'position': 'absolute', 'bottom': '80px', 'right': '20px'})
             ]
         )
     ]
 )
 
-# Callback para actualizar las opciones del Dropdown y graficar los datos
+# ===============================================
+# Callback principal: genera gráfico + dropdowns
+# ===============================================
 @dash.callback(
     [Output('primary-variable', 'options'),
      Output('secondary-variable', 'options'),
@@ -81,74 +156,90 @@ layout = html.Div(
     [Input('plot-button', 'n_clicks')],
     [State('primary-variable', 'value'),
      State('secondary-variable', 'value'),
-     State('time-period', 'value'),  # Nuevo State para capturar el período seleccionado
+     State('time-period', 'value'),
+     State('line1-value', 'value'),
+     State('axis1-choice', 'value'),
+     State('line2-value', 'value'),
+     State('axis2-choice', 'value'),
      State('stored-data', 'data')]
 )
-def update_graph(n_clicks, primary_vars, secondary_vars, time_period, stored_data):
-    # Convertir los datos almacenados de vuelta a un DataFrame
+def update_graph(n_clicks, primary_vars, secondary_vars, time_period,
+                 line1_val, axis1, line2_val, axis2, stored_data):
+    # Sin datos -> gráfico vacío
     if stored_data is None:
         return [], [], go.Figure()
 
     df = pd.DataFrame(stored_data)
-
-    # Asegurarse de que la columna de fecha sea datetime
     df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], errors='coerce')
-    
-    # Configurar las opciones del dropdown en base a las columnas del DataFrame
-    dropdown_options = [{'label': col, 'value': col} for col in df.columns[1:]]  # Excluir la columna de fechas
+    dropdown_options = [{'label': col, 'value': col} for col in df.columns[1:]]
 
-    # Verificar si se seleccionó un período de agrupación
+    # Resampleo
     if time_period:
-        # Resamplear los datos para obtener los promedios por el período seleccionado
-        df = df.set_index(df.columns[0])  # Asegurar que la columna de fecha es el índice
-        df_resampled = df.resample(time_period).mean().reset_index()  # Calcular el promedio por período
+        df = df.set_index(df.columns[0])
+        df_resampled = df.resample(time_period).mean().reset_index()
     else:
-        # Si no se seleccionó un período, mantener los datos originales
         df_resampled = df
 
-    # Generar la gráfica si hay un clic en el botón y variables seleccionadas
     if n_clicks and primary_vars:
         fig = go.Figure()
 
-        # Añadir cada serie del eje Y primario
+        # ---- Series primarias ----
         for var in primary_vars:
-            fig.add_trace(
-                go.Scatter(
-                    x=df_resampled.iloc[:, 0], 
-                    y=df_resampled[var], 
-                    mode='lines', 
-                    name=var,
-                    yaxis='y1'
-                )
-            )
+            fig.add_trace(go.Scatter(x=df_resampled.iloc[:, 0], y=df_resampled[var],
+                                     mode='lines', name=var, yaxis='y1'))
 
-        # Añadir cada serie del eje Y secundario si hay variables seleccionadas
+        # ---- Series secundarias ----
         if secondary_vars:
             for var in secondary_vars:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df_resampled.iloc[:, 0], 
-                        y=df_resampled[var], 
-                        mode='lines', 
-                        name=var,
-                        yaxis='y2'
-                    )
-                )
-            # Configuración del eje Y secundario
-            fig.update_layout(
-                yaxis2=dict(
-                    title='Secundario',
-                    overlaying='y',
-                    side='right'
-                )
-            )
+                fig.add_trace(go.Scatter(x=df_resampled.iloc[:, 0], y=df_resampled[var],
+                                         mode='lines', name=var, yaxis='y2'))
+            fig.update_layout(yaxis2=dict(title='Secondary Y axis', overlaying='y', side='right'))
 
-        fig.update_layout(
-            title="Análisis de Series Temporales",
-            xaxis_title="Fecha",
-            yaxis_title='Primario',
-            height=700  # Ajustar la altura del gráfico
-        )
+        # --------- Líneas horizontales personalizadas ---------
+        # Helper interno
+        def add_hline(value, axis, color):
+            fig.add_shape(
+                type='line',
+                x0=df_resampled.iloc[0, 0],
+                x1=df_resampled.iloc[-1, 0],
+                y0=value,
+                y1=value,
+                xref='x',
+                yref=axis,
+                line=dict(color=color, dash='dash')
+            )
+            fig.add_annotation(x=df_resampled.iloc[0, 0], y=value, xref='x', yref=axis,
+                               text=f"Line @ {value}", showarrow=False,
+                               font=dict(color=color))
+
+        if line1_val is not None and axis1 in ['y1', 'y2']:
+            add_hline(line1_val, axis1, 'red')
+        if line2_val is not None and axis2 in ['y1', 'y2']:
+            add_hline(line2_val, axis2, 'blue')
+
+        # Layout final
+        fig.update_layout(title="Time Series Analysis",
+                          xaxis_title="Date",
+                          yaxis_title='Primary Y axis',
+                          height=700)
         return dropdown_options, dropdown_options, fig
 
+    # Si aún no se pulsa Plot -> return vacío
     return dropdown_options, dropdown_options, go.Figure()
+
+# =================================
+# Callback: descarga gráfico (HTML)
+# =================================
+@dash.callback(
+    Output("download-graph", "data"),
+    [Input("save-button", "n_clicks")],
+    [State("time-series-graph", "figure"),
+     State("project-name-store", "data")],
+    prevent_initial_call=True
+)
+def save_graph_as_html(n_clicks, figure, project_name):
+    if n_clicks:
+        project_name = project_name or "grafico_series_temporales"
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"{project_name}_{timestamp}.html"
+        return dcc.send_string(pio.to_html(figure), filename)
