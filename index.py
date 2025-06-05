@@ -1,213 +1,271 @@
-from dash import dcc, html, Input, Output, State
-import dash
-import plotly.graph_objs as go
+from dash import dcc, html
+from dash.dependencies import Input, Output, State
+import dash_bootstrap_components as dbc
 import pandas as pd
-import plotly.io as pio  # Necesario para guardar el gráfico como HTML
-from datetime import datetime  # Para nombrar el archivo con la fecha actual
+import io, base64
+from dash import Dash
 
-# --------------
-# NOTA IMPORTANTE
-# --------------
-# Usamos router manual en index.py, por lo que NO necesitamos la API de
-# dash pages.  Quitamos dash.register_page para evitar el error
-#   "dash.exceptions.PageError: dash.register_page() must be called after
-#    app instantiation" cuando Render levanta gunicorn.
+# ──────────────────────────────────────────────
+# Crear la aplicación Dash
+# ──────────────────────────────────────────────
+app = Dash(__name__,
+           external_stylesheets=[dbc.themes.BOOTSTRAP],
+           suppress_callback_exceptions=True)
+server = app.server
 
-# ==========================
-# Layout de la página /plots
-# ==========================
-layout = html.Div(
+from pages import plots  # Sub-página de análisis
+
+# ──────────────────────────────────────────────
+# Layout principal
+# ──────────────────────────────────────────────
+app.layout = html.Div(
     className="main-container",
+    style={'display': 'flex', 'flexDirection': 'column', 'minHeight': '100vh'},
     children=[
-        # ------------------------------
-        # Barra de controles y opciones
-        # ------------------------------
+        # Encabezado
         html.Div(
-            className="options-container",
-            style={
-                'display': 'flex',
-                'justify-content': 'space-between',
-                'align-items': 'center',
-                'flex-wrap': 'wrap',
-                'margin': '20px'
-            },
+            className="header-container",
+            style={'display': 'flex', 'justify-content': 'center',
+                   'alignItems': 'center', 'padding': '20px'},
             children=[
-                # Variables primarias (eje y1)
-                html.Div(
-                    children=[
-                        dcc.Dropdown(
-                            id='primary-variable',
-                            placeholder='Choose primary variables',
-                            multi=True,
-                            style={'width': '250px'},
-                        )
-                    ],
-                    style={'flex': '1', 'margin-right': '20px'}
-                ),
-                # Variables secundarias (eje y2)
-                html.Div(
-                    children=[
-                        dcc.Dropdown(
-                            id='secondary-variable',
-                            placeholder='Choose secondary variables',
-                            multi=True,
-                            style={'width': '250px'},
-                        )
-                    ],
-                    style={'flex': '1', 'margin-right': '20px'}
-                ),
-                # Periodo de muestreo / resampleo
-                html.Div(
-                    children=[
-                        dcc.Dropdown(
-                            id='time-period',
-                            options=[
-                                {'label': '5 Minutes', 'value': '5T'},
-                                {'label': '10 Minutes', 'value': '10T'},
-                                {'label': '30 Minutes', 'value': '30T'},
-                                {'label': '1 Hour', 'value': '1H'}
-                            ],
-                            placeholder='Choose time period',
-                            style={'width': '200px'},
-                        )
-                    ],
-                    style={'flex': '1', 'margin-right': '20px'}
-                ),
-
-                # ---------------------------
-                # Customer input – Línea #1
-                # ---------------------------
-                html.Div(
-                    children=[
-                        html.Label('Line 1', style={'margin-right': '6px'}),
-                        dcc.Input(
-                            id='line1-value',
-                            type='number',
-                            placeholder='Y value',
-                            style={'width': '120px', 'margin-right': '6px'}
-                        ),
-                        dcc.Dropdown(
-                            id='axis1-choice',
-                            options=[
-                                {'label': 'Primary', 'value': 'y1'},
-                                {'label': 'Secondary', 'value': 'y2'}
-                            ],
-                            placeholder='Axis',
-                            style={'width': '110px'}
-                        )
-                    ],
-                    style={'display': 'flex', 'align-items': 'center', 'margin-right': '20px'}
-                ),
-
-                # ---------------------------
-                # Customer input – Línea #2
-                # ---------------------------
-                html.Div(
-                    children=[
-                        html.Label('Line 2', style={'margin-right': '6px'}),
-                        dcc.Input(
-                            id='line2-value',
-                            type='number',
-                            placeholder='Y value',
-                            style={'width': '120px', 'margin-right': '6px'}
-                        ),
-                        dcc.Dropdown(
-                            id='axis2-choice',
-                            options=[
-                                {'label': 'Primary', 'value': 'y1'},
-                                {'label': 'Secondary', 'value': 'y2'}
-                            ],
-                            placeholder='Axis',
-                            style={'width': '110px'}
-                        )
-                    ],
-                    style={'display': 'flex', 'align-items': 'center', 'margin-right': '20px'}
-                ),
-
-                # Botón para generar el gráfico
-                html.Button('Plot graph', id='plot-button', className='btn btn-primary', style={'margin-right': '20px'})
+                html.Img(src='/assets/MetsoLogo.png', className="logo"),
+                html.H1("Thickener Operational Data Analysis", className="main-title")
             ]
         ),
 
-        # ----------------
-        # Contenedor gráfico
-        # ----------------
-        html.Div(
-            className="graph-container",
-            style={'width': '100%', 'display': 'flex', 'justify-content': 'center', 'position': 'relative'},
-            children=[
-                dcc.Graph(id='time-series-graph', className='time-series-graph', config={'displayModeBar': True}),
-                dcc.Download(id="download-graph"),
-                html.Button('Save', id='save-button', className='btn btn-secondary',
-                            style={'position': 'absolute', 'bottom': '80px', 'right': '20px'})
-            ]
-        )
+        dcc.Location(id='url', refresh=False),
+        html.Div(id='page-content', style={'flex': '1'}),
+
+        # Almacenes en sesión
+        dcc.Store(id='stored-data', storage_type='session'),
+        dcc.Store(id='project-name-store', storage_type='session'),
+
+        # Pie de página
+        html.Div(className='footer',
+                 children=[html.P("Copyright © 2024 Metso")],
+                 style={'textAlign': 'center', 'padding': '10px'}),
+
+        # Modal de carga + barra de progreso
+        dbc.Modal(
+            [
+                dbc.ModalHeader("Cargando archivo..."),
+                dbc.ModalBody([
+                    html.Div("Por favor espere mientras se carga el archivo."),
+                    dbc.Progress(id="progress-bar", striped=True,
+                                 animated=True, style={"marginTop": "10px"}),
+                    # Intervalo: deshabilitado por defecto
+                    dcc.Interval(id="interval-progress",
+                                 interval=500,             # 0.5 s
+                                 n_intervals=0,
+                                 disabled=True,
+                                 max_intervals=200)        # safety-stop
+                ]),
+            ],
+            id="loading-modal",
+            is_open=False,
+        ),
     ]
 )
 
-# ===============================================
-# Callback principal: genera gráfico + dropdowns
-# ===============================================
-@dash.callback(
-    [Output('primary-variable', 'options'),
-     Output('secondary-variable', 'options'),
-     Output('time-series-graph', 'figure')],
-    Input('plot-button', 'n_clicks'),
-    State('primary-variable', 'value'),
-    State('secondary-variable', 'value'),
-    State('time-period', 'value'),
-    State('line1-value', 'value'),
-    State('axis1-choice', 'value'),
-    State('line2-value', 'value'),
-    State('axis2-choice', 'value'),
-    State('stored-data', 'data')
+# ──────────────────────────────────────────────
+# Navegación entre páginas
+# ──────────────────────────────────────────────
+@app.callback(Output('page-content', 'children'),
+              Input('url', 'pathname'))
+def display_page(pathname):
+    return plots.layout if pathname == '/plots' else build_home()
+
+
+def build_home():
+    """Devuelve el layout de la página principal."""
+    return html.Div(
+        className="content-container",
+        children=[
+            # -------- Columna izquierda --------
+            html.Div(
+                className="left-column",
+                style={'width': '30%', 'padding': '20px'},
+                children=[
+                    html.H3("Project Information", className="section-title"),
+                    build_info_table(),
+                    html.H3("Technical Information", className="section-title"),
+                    build_tech_table(),
+                    html.H3("Raw Data Entry", className="section-title"),
+                    build_upload_box(),
+                    html.H3("Comments", className="section-title"),
+                    dcc.Textarea(id="comments", className="comments-box",
+                                 placeholder="Enter any additional comments here...",
+                                 style={'width': '80%', 'height': 150})
+                ]
+            ),
+            # -------- Columna derecha --------
+            html.Div(
+                className="right-column",
+                style={'width': '70%', 'padding': '20px'},
+                children=[
+                    html.H3("Data Analysis", className="section-title"),
+                    html.Div(
+                        className="analysis-container",
+                        style={'display': 'flex', 'justify-content': 'center'},
+                        children=[
+                            html.A(
+                                href="/plots",
+                                children=[
+                                    html.Div(
+                                        className="analysis-box",
+                                        children=[
+                                            html.Img(src='/assets/timeimg.png',
+                                                     className="analysis-img"),
+                                            html.P("Time Series", className="analysis-text")
+                                        ]
+                                    )
+                                ]
+                            )
+                        ]
+                    )
+                ]
+            )
+        ],
+        style={'display': 'flex', 'flexDirection': 'row'}
+    )
+
+
+# --- Helpers para construir tablas y upload ----------------------------------
+def build_info_table():
+    return html.Table(className="input-table", children=[
+        html.Tr([
+            html.Td(html.Label("Project Name"), className="label-cell"),
+            html.Td(dcc.Input(type="text", id="project-name", className="input-cell")),
+        ]),
+        html.Tr([
+            html.Td(html.Label("Operation Name"), className="label-cell"),
+            html.Td(dcc.Input(type="text", id="operation-name", className="input-cell")),
+        ]),
+        html.Tr([
+            html.Td(html.Label("Type of Thickener"), className="label-cell"),
+            html.Td(dcc.Dropdown(
+                id="thickener-type",
+                options=[
+                    {'label': t, 'value': t} for t in [
+                        'High Rate Thickener', 'High Compression Thickener',
+                        'Paste Thickener', 'Clarifier Thickener',
+                        'HRT-S', 'Deep Cone Settler', 'Non-Metso Thickener'
+                    ]
+                ],
+                className="dropdown-cell"
+            )),
+        ]),
+        html.Tr([
+            html.Td(html.Label("User Name"), className="label-cell"),
+            html.Td(dcc.Input(type="text", id="user-name", className="input-cell")),
+        ])
+    ])
+
+
+def build_tech_table():
+    return html.Table(className="input-table", children=[
+        html.Tr([
+            html.Td(html.Label("Solid Specific Gravity (-)"), className="label-cell"),
+            html.Td(dcc.Input(type="number", id="specific-gravity", className="input-cell")),
+        ]),
+        html.Tr([
+            html.Td(html.Label("Flocculant Strength (%)"), className="label-cell"),
+            html.Td(dcc.Input(type="number", id="flocculant-strength", className="input-cell")),
+        ])
+    ])
+
+
+def build_upload_box():
+    return html.Div(className="upload-container", style={'position': 'relative'}, children=[
+        dcc.Upload(
+            id='upload-data',
+            children=html.Div([html.Span('Drop or Select a File', id='upload-text')]),
+            style={
+                'width': '300px', 'height': '60px', 'lineHeight': '60px',
+                'borderWidth': '1px', 'borderStyle': 'dashed',
+                'borderRadius': '5px', 'textAlign': 'center',
+                'backgroundColor': '#f9f9f9',
+            },
+            multiple=False
+        ),
+        # Botón “X” para resetear carga
+        html.Button('×', id='remove-upload', n_clicks=0,
+                    style={'position': 'absolute', 'top': '5px', 'right': '5px',
+                           'backgroundColor': 'transparent', 'color': 'red',
+                           'border': 'none', 'fontSize': '18px', 'cursor': 'pointer'}),
+        html.Div(id='output-file-upload')
+    ])
+
+
+# ──────────────────────────────────────────────
+# Callbacks
+# ──────────────────────────────────────────────
+# 1) Carga y reseteo de archivo
+@app.callback(
+    [Output('stored-data', 'data'),
+     Output('upload-text', 'children')],
+    [Input('upload-data', 'contents'),
+     Input('remove-upload', 'n_clicks')],
+    State('upload-data', 'filename')
 )
-def update_graph(n_clicks, primary_vars, secondary_vars, time_period,
-                 line1_val, axis1, line2_val, axis2, stored_data):
-    if stored_data is None:
-        return [], [], go.Figure()
+def handle_uploaded_file(contents, remove_clicks, filename):
+    if remove_clicks:               # <-- n_clicks > 0
+        return None, "Drop or Select a File"
 
-    df = pd.DataFrame(stored_data)
-    df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], errors='coerce')
-    dropdown_options = [{'label': col, 'value': col} for col in df.columns[1:]]
+    if contents:
+        content_type, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string)
+        try:
+            df = pd.read_excel(io.BytesIO(decoded),
+                               sheet_name=0, skiprows=6, engine='openpyxl')
+            df = df.iloc[:, 3:14]                     # columnas D–N
+            df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], errors='coerce')
+            icon = html.Img(src='/assets/excel-icon.png',
+                            style={'width': '20px', 'marginRight': '10px'})
+            return df.to_dict('records'), html.Span([icon, filename])
+        except Exception as e:
+            print("Error al leer el archivo:", e)
 
-    # Resampleo
-    df_resampled = (df.set_index(df.columns[0])
-                      .resample(time_period).mean().reset_index()) if time_period else df
+    return None, "Drop or Select a File"
 
-    if n_clicks and primary_vars:
-        fig = go.Figure()
-        for var in primary_vars:
-            fig.add_trace(go.Scatter(x=df_resampled.iloc[:, 0], y=df_resampled[var],
-                                     mode='lines', name=var, yaxis='y1'))
-        if secondary_vars:
-            for var in secondary_vars:
-                fig.add_trace(go.Scatter(x=df_resampled.iloc[:, 0], y=df_resampled[var],
-                                         mode='lines', name=var, yaxis='y2'))
-            fig.update_layout(yaxis2=dict(title='Secondary Y axis', overlaying='y', side='right'))
 
-        def add_hline(value, axis, color):
-            fig.add_shape(type='line', x0=df_resampled.iloc[0, 0], x1=df_resampled.iloc[-1, 0],
-                          y0=value, y1=value, xref='x', yref=axis,
-                          line=dict(color=color, dash='dash'))
-            fig.add_annotation(x=df_resampled.iloc[0, 0], y=value, xref='x', yref=axis,
-                               text=f"Line @ {value}", showarrow=False, font=dict(color=color))
-        if line1_val is not None and axis1 in ['y1', 'y2']:
-            add_hline(line1_val, axis1, 'red')
-        if line2_val is not None and axis2 in ['y1', 'y2']:
-            add_hline(line2_val, axis2, 'blue')
+# 2) Progreso y control del Interval
+@app.callback(
+    [Output('loading-modal', 'is_open'),
+     Output('progress-bar', 'value'),
+     Output('progress-bar', 'label'),
+     Output('interval-progress', 'disabled')],
+    [Input('upload-data', 'contents'),
+     Input('interval-progress', 'n_intervals')],
+    State('loading-modal', 'is_open'),
+    prevent_initial_call=True
+)
+def handle_upload_and_progress(contents, n_intervals, is_open):
+    # Cuando se sube un archivo → abre modal y habilita Interval
+    if contents and not is_open:
+        return True, 0, "0 %", False
 
-        fig.update_layout(title="Time Series Analysis",
-                          xaxis_title="Date", yaxis_title='Primary Y axis', height=700)
-        return dropdown_options, dropdown_options, fig
-    return dropdown_options, dropdown_options, go.Figure()
+    # Mientras el modal está abierto, avanza la barra
+    if is_open:
+        progress = (n_intervals + 1) * 10
+        if progress >= 100:
+            # Carga finalizada → cierra modal y deshabilita Interval
+            return False, 100, "Carga completa", True
+        return True, progress, f"{progress} %", False
 
-# =================================
-# Callback: descarga gráfico (HTML)
-# =================================
-@dash.callback(
-    Output("download-graph", "data"),
-    Input("save-button", "n_clicks"),
-    State("time-series-graph", "figure"),
-    State("project-name-store", "data"),
-    prevent
+    # Situación neutra
+    return is_open, 0, "", True
+
+
+# 3) Almacenar “Project Name”
+@app.callback(Output('project-name-store', 'data'),
+              Input('project-name', 'value'))
+def store_project_name(project_name):
+    return project_name or ""
+
+
+# ──────────────────────────────────────────────
+# Run local (en Render usarás gunicorn)
+# ──────────────────────────────────────────────
+if __name__ == "__main__":
+    app.run_server(debug=True, port=8050)
