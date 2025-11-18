@@ -95,14 +95,46 @@ before_after_modal = dbc.Modal(
         dbc.ModalBody([
             # 🔹 NUEVO: rango de fechas disponible en el archivo
             html.Div(
-                id="ba_available_range",
-                style={
-                    "marginBottom": "8px",
-                    "fontSize": "12px",
-                    "color": "#555",
-                    "fontStyle": "italic",
-                },
+                [
+                    html.Div(
+                        "Current available time",
+                        style={
+                            "textAlign": "center",
+                            "fontWeight": "bold",
+                            "marginBottom": "4px",
+                        },
+                    ),
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.Div("From", style={"fontSize": "12px"}),
+                                    dbc.Input(
+                                        id="ba_from_display",
+                                        readonly=True,
+                                        size="sm",
+                                    ),
+                                ],
+                                md=6,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.Div("To", style={"fontSize": "12px"}),
+                                    dbc.Input(
+                                        id="ba_to_display",
+                                        readonly=True,
+                                        size="sm",
+                                    ),
+                                ],
+                                md=6,
+                            ),
+                        ],
+                        className="g-1",
+                        style={"marginBottom": "10px"},
+                    ),
+                ]
             ),
+            # --- FIN bloque rango disponible ---
 
             dbc.Row([
                 dbc.Col([
@@ -120,34 +152,18 @@ before_after_modal = dbc.Modal(
 
 
             # --- Calendar popup (small modal) ---
-            dbc.Modal(
-                id="ba_cal_modal", is_open=False, size="sm", scrollable=False,
-                children=[
-                    dbc.ModalHeader(dbc.ModalTitle("Pick a date"), close_button=True),
-                    dbc.ModalBody([
-                        html.Div(
-                            style={"display":"flex","gap":"8px","alignItems":"center","marginBottom":"8px"},
-                            children=[
-                                html.Div("Month", style={"width":"60px","fontSize":"12px","color":"#666"}),
-                                dcc.Dropdown(id="ba_jump_month", options=MONTH_OPTS,
-                                             value=date.today().month, style={"width":"140px"}),
-                                dbc.Button("◀", id="ba_year_prev", size="sm", color="secondary", outline=True),
-                                dbc.Button("▶", id="ba_year_next", size="sm", color="secondary", outline=True),
-                                dbc.Badge(id="ba_year_badge", children=str(date.today().year),
-                                          color="light", text_color="dark"),
-                                dbc.Button("Today", id="ba_today", size="sm", color="secondary", outline=True,
-                                           style={"marginLeft":"auto"}),
-                            ]
-                        ),
-                        dcc.DatePickerSingle(
-                            id="ba_cutoff",
-                            min_date_allowed=date(2000,1,1),
-                            max_date_allowed=date(2050,12,31),
-                            display_format="YYYY-MM-DD",
-                        ),
-                    ]),
-                ],
+        dbc.Modal(
+    id="ba_cal_modal", is_open=False, size="sm", scrollable=False,
+    children=[
+        dbc.ModalHeader(dbc.ModalTitle("Pick a date"), close_button=True),
+        dbc.ModalBody([
+            dcc.DatePickerSingle(
+                id="ba_cutoff",
+                display_format="YYYY-MM-DD",
             ),
+        ]),
+    ],
+),
 
             dbc.Row([
                 dbc.Col(dbc.Button("Generate", id="ba_go", color="primary"), md="auto"),
@@ -443,33 +459,30 @@ def populate_modal_options(_, stored):
     opts = [{"label": c, "value": c} for c in num_cols]
     return opts, opts
 @dash.callback(
-    Output("ba_available_range", "children"),
+    Output("ba_from_display", "value"),
+    Output("ba_to_display", "value"),
     Output("ba_cutoff", "min_date_allowed"),
     Output("ba_cutoff", "max_date_allowed"),
     Input("stored-data", "data"),
 )
 def update_ba_date_range(stored):
     """
-    Muestra el rango de fechas disponible en el archivo y
-    limita el calendario de Before/After a ese rango.
+    Muestra el rango de fechas disponible y limita el calendario.
     """
     df, time_col = _get_df(stored)
     if df is None or time_col is None:
         today = date.today()
-        msg = "Current available data: -"
-        return msg, today.replace(year=today.year - 1), today
+        return "", "", today.replace(year=today.year - 1), today
 
     df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
     df = df.dropna(subset=[time_col])
     if df.empty:
         today = date.today()
-        msg = "Current available data: (no valid dates in file)"
-        return msg, today.replace(year=today.year - 1), today
+        return "", "", today.replace(year=today.year - 1), today
 
     d_min = df[time_col].min().date()
     d_max = df[time_col].max().date()
-    msg = f"Current available data: {d_min.isoformat()} → {d_max.isoformat()}"
-    return msg, d_min, d_max
+    return d_min.isoformat(), d_max.isoformat(), d_min, d_max
 # -----------------------------
 # Calendar (BA) — year jump & modal unified
 # -----------------------------
@@ -495,44 +508,23 @@ def step_ba_year(prev, nxt, today, current):
 
 @dash.callback(
     Output("ba_cutoff", "initial_visible_month"),
-    Input("stored-data", "data"),      # 🔹 nuevo: archivo cargado
-    Input("ba_jump_month", "value"),
-    Input("ba_year_store", "data"),
-    Input("ba_today", "n_clicks"),
-    prevent_initial_call=True,
+    Input("stored-data", "data"),
 )
-def jump_ba_month(stored, month, year, today):
+def set_initial_month(stored):
     """
-    - Cuando se carga/actualiza el archivo → abrir en el mes de la primera fecha.
-    - Cuando se pulsa Today → mes actual.
-    - Cuando se cambia mes/año → usar esos valores.
+    Al cargar el archivo, el calendario abre en el mes donde empieza la data.
     """
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        return no_update
+    df, time_col = _get_df(stored)
+    if df is not None and time_col is not None:
+        df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
+        df = df.dropna(subset=[time_col])
+        if not df.empty:
+            d_min = df[time_col].min().date()
+            return d_min.replace(day=1)
 
-    trigger = ctx.triggered[0]["prop_id"].split(".")[0]
+    # fallback por si acaso
+    return date.today().replace(day=1)
 
-    # 1) Archivo cargado → usar primer mes de la serie
-    if trigger == "stored-data":
-        df, time_col = _get_df(stored)
-        if df is not None and time_col is not None:
-            df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
-            df = df.dropna(subset=[time_col])
-            if not df.empty:
-                d_min = df[time_col].min().date()
-                return d_min.replace(day=1)
-        # fallback
-        return date.today().replace(day=1)
-
-    # 2) Botón Today
-    if trigger == "ba_today":
-        return date.today().replace(day=1)
-
-    # 3) Cambio manual de mes/año
-    month = month or date.today().month
-    year = year or date.today().year
-    return date(int(year), int(month), 1)
 
 @dash.callback(
     Output("ba_cal_modal", "is_open"),
