@@ -7,19 +7,24 @@ import base64
 import dash  # para callback_context
 from dash import Dash
 
-# 1) Crear primero la aplicación Dash
+# =========================
+# Crear la aplicación Dash
+# =========================
 app = Dash(
     __name__,
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     suppress_callback_exceptions=True,
+    use_pages=True,  # por si en plots.py sigues usando dash.register_page
 )
 server = app.server
 
-# 2) Recién después importar la subpágina
-from pages import plots  # Importar la subpágina de análisis
+# Importar la subpágina de análisis DESPUÉS de crear la app
+from pages import plots  # noqa: E402
 
 
-# Layout de la aplicación
+# =========================
+# Layout principal
+# =========================
 app.layout = html.Div(
     className="main-container",
     style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
@@ -38,6 +43,7 @@ app.layout = html.Div(
                 html.H1("Thickener Operational Data Analysis", className="main-title"),
             ],
         ),
+
         dcc.Location(id="url", refresh=False),
         html.Div(id="page-content", style={"flex": "1"}),
 
@@ -55,7 +61,9 @@ app.layout = html.Div(
 )
 
 
+# =========================
 # Navegación entre páginas
+# =========================
 @app.callback(Output("page-content", "children"), Input("url", "pathname"))
 def display_page(pathname):
     if pathname == "/plots":
@@ -65,7 +73,7 @@ def display_page(pathname):
             className="content-container",
             style={"display": "flex", "flexDirection": "row"},
             children=[
-                # COLUMNA IZQUIERDA
+                # -------- COLUMNA IZQUIERDA --------
                 html.Div(
                     className="left-column",
                     style={"width": "30%", "padding": "20px"},
@@ -170,6 +178,7 @@ def display_page(pathname):
                                 )
                             ],
                         ),
+
                         html.H3("Technical Information", className="section-title"),
                         html.Div(
                             className="form-container",
@@ -215,15 +224,25 @@ def display_page(pathname):
                                 )
                             ],
                         ),
+
                         html.H3("Raw Data Entry", className="section-title"),
                         html.Div(
                             className="upload-container",
-                            style={"position": "relative"},
+                            style={
+                                "position": "relative",
+                                "width": "320px",          # un poco más que el upload
+                                "display": "inline-block", # para que no se estire a todo el ancho
+                            },
                             children=[
                                 dcc.Upload(
                                     id="upload-data",
                                     children=html.Div(
-                                        [html.Span("Drop or Select a File", id="upload-text")]
+                                        [
+                                            html.Span(
+                                                "Drop or Select a File",
+                                                id="upload-text",
+                                            )
+                                        ]
                                     ),
                                     style={
                                         "width": "300px",
@@ -237,7 +256,7 @@ def display_page(pathname):
                                     },
                                     multiple=False,
                                 ),
-                                # Botón "X" en la esquina superior derecha del recuadro
+                                # Botón "X" estético pegado al recuadro
                                 html.Button(
                                     "×",
                                     id="remove-upload",
@@ -261,6 +280,7 @@ def display_page(pathname):
                                 html.Div(id="output-file-upload"),
                             ],
                         ),
+
                         html.H3("Comments", className="section-title"),
                         html.Div(
                             className="comments-container",
@@ -275,7 +295,8 @@ def display_page(pathname):
                         ),
                     ],
                 ),
-                # COLUMNA DERECHA
+
+                # -------- COLUMNA DERECHA --------
                 html.Div(
                     className="right-column",
                     style={"width": "70%", "padding": "20px"},
@@ -296,7 +317,8 @@ def display_page(pathname):
                                                     className="analysis-img",
                                                 ),
                                                 html.P(
-                                                    "Time Series", className="analysis-text"
+                                                    "Time Series",
+                                                    className="analysis-text",
                                                 ),
                                             ],
                                         )
@@ -310,7 +332,9 @@ def display_page(pathname):
         )
 
 
-# Carga / eliminación de archivo
+# =========================
+# Callback: upload + botón X
+# =========================
 @app.callback(
     [Output("stored-data", "data"), Output("upload-text", "children")],
     [Input("upload-data", "contents"), Input("remove-upload", "n_clicks")],
@@ -318,22 +342,27 @@ def display_page(pathname):
 )
 def handle_uploaded_file(contents, remove_clicks, filename):
     ctx = dash.callback_context
+
+    # Carga inicial de la app
     if not ctx.triggered:
         return None, "Drop or Select a File"
 
     trigger = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    # Si se hace clic en la X → limpiar todo
+    # Si se hizo clic en la X → limpiar todo
     if trigger == "remove-upload":
         return None, "Drop or Select a File"
 
-    # Si se carga un archivo nuevo
+    # Si se cargó un archivo nuevo
     if trigger == "upload-data" and contents is not None:
         content_type, content_string = contents.split(",")
         decoded = base64.b64decode(content_string)
         try:
             df = pd.read_excel(
-                io.BytesIO(decoded), sheet_name=0, skiprows=6, engine="openpyxl"
+                io.BytesIO(decoded),
+                sheet_name=0,
+                skiprows=6,
+                engine="openpyxl",
             )
             # Columnas D a N
             df = df.iloc[:, 3:14]
@@ -358,11 +387,39 @@ def handle_uploaded_file(contents, remove_clicks, filename):
     return None, "Drop or Select a File"
 
 
-# Guardar Project Name en store
-@app.callback(Output("project-name-store", "data"), Input("project-name", "value"))
-def store_project_name(project_name):
-    return project_name if project_name else ""
+# =========================
+# Callback: guardar metadata del proyecto
+# =========================
+@app.callback(
+    Output("project-name-store", "data"),
+    [
+        Input("project-name", "value"),
+        Input("operation-name", "value"),
+        Input("thickener-type", "value"),
+        Input("user-name", "value"),
+    ],
+)
+def store_project_meta(project_name, operation_name, thickener_type, user_name):
+    parts = []
+
+    if project_name:
+        parts.append(project_name)
+    if operation_name:
+        parts.append(operation_name)
+    if thickener_type:
+        parts.append(thickener_type)
+    if user_name:
+        parts.append(f"by {user_name}")
+
+    if not parts:
+        return ""
+
+    # Ejemplo: "Yanacocha TH - Tailings - HRT-S by Max"
+    return " - ".join(parts)
 
 
+# =========================
+# Run local
+# =========================
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8050, debug=True, use_reloader=False)
