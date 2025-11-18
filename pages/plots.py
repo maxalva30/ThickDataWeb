@@ -183,58 +183,88 @@ target_modal = dbc.Modal(
     children=[
         dbc.ModalHeader(dbc.ModalTitle("Target compliance — Time window")),
         dbc.ModalBody([
-            dbc.Row([
-                dbc.Col([
-                    html.Label("Date range"),
-                    dbc.InputGroup([
-                        dbc.Input(id="t_range_display", placeholder="Start → End Date", readonly=True),
-                        dbc.Button("📅", id="t_cal_btn", color="secondary", outline=True, n_clicks=0),
-                    ], size="md"),
-                ], md=7),
-                dbc.Col([
-                    html.Label("Parameter"),
-                    dcc.Dropdown(id="t_param", placeholder="Select column", clearable=False),
-                ], md=3),
-                dbc.Col([
-                    html.Label("Target"),
-                    dcc.Input(id="t_target", type="number", placeholder="e.g., 60", style={"width":"100%"}),
-                ], md=1),
-                dbc.Col([
-                    html.Label("± Tolerance"),
-                    dcc.Input(id="t_tol", type="number", placeholder="e.g., 5", style={"width":"100%"}),
-                ], md=1),
-            ], className="g-3"),
+    # --- NUEVO: Current available time ---
+    html.Div(
+        [
+            html.Div(
+                "Current available time",
+                style={
+                    "textAlign": "center",
+                    "fontWeight": "bold",
+                    "marginBottom": "4px",
+                },
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            html.Div("From", style={"fontSize": "12px"}),
+                            dbc.Input(
+                                id="t_from_display",
+                                readonly=True,
+                                size="sm",
+                            ),
+                        ],
+                        md=6,
+                    ),
+                    dbc.Col(
+                        [
+                            html.Div("To", style={"fontSize": "12px"}),
+                            dbc.Input(
+                                id="t_to_display",
+                                readonly=True,
+                                size="sm",
+                            ),
+                        ],
+                        md=6,
+                    ),
+                ],
+                className="g-1",
+                style={"marginBottom": "10px"},
+            ),
+        ]
+    ),
+
+    dbc.Row([
+        dbc.Col([
+            html.Label("Date range"),
+            dbc.InputGroup([
+                dbc.Input(id="t_range_display", placeholder="Start → End Date", readonly=True),
+                dbc.Button("📅", id="t_cal_btn", color="secondary", outline=True, n_clicks=0),
+            ], size="md"),
+        ], md=7),
+        dbc.Col([
+            html.Label("Parameter"),
+            dcc.Dropdown(id="t_param", placeholder="Select column", clearable=False),
+        ], md=3),
+        dbc.Col([
+            html.Label("Target"),
+            dcc.Input(id="t_target", type="number", placeholder="e.g., 50", style={"width":"100%"}),
+        ], md=1),
+        dbc.Col([
+            html.Label("± Tolerance"),
+            dcc.Input(id="t_tol", type="number", placeholder="e.g., 5", style={"width":"100%"}),
+        ], md=1),
+    ], className="g-3"),
 
             # --- Calendar popup (small modal) ---
             dbc.Modal(
-                id="t_cal_modal", is_open=False, size="sm", scrollable=False,
-                children=[
-                    dbc.ModalHeader(dbc.ModalTitle("Pick a date range"), close_button=True),
-                    dbc.ModalBody([
-                        html.Div(
-                            style={"display":"flex","gap":"8px","alignItems":"center","marginBottom":"8px"},
-                            children=[
-                                html.Div("Month", style={"width":"60px","fontSize":"12px","color":"#666"}),
-                                dcc.Dropdown(id="t_jump_month", options=MONTH_OPTS,
-                                             value=date.today().month, style={"width":"140px"}),
-                                dbc.Button("◀", id="t_year_prev", size="sm", color="secondary", outline=True),
-                                dbc.Button("▶", id="t_year_next", size="sm", color="secondary", outline=True),
-                                dbc.Badge(id="t_year_badge", children=str(date.today().year),
-                                          color="light", text_color="dark"),
-                                dbc.Button("Today", id="t_today", size="sm", color="secondary", outline=True,
-                                           style={"marginLeft":"auto"}),
-                            ]
-                        ),
-                        dcc.DatePickerRange(
-                            id="t_range",
-                            minimum_nights=0,
-                            min_date_allowed=date(2000,1,1),
-                            max_date_allowed=date(2050,12,31),
-                            display_format="YYYY-MM-DD",
-                        ),
-                    ]),
-                ],
+    id="t_cal_modal", is_open=False, size="sm", scrollable=False,
+    children=[
+        dbc.ModalHeader(dbc.ModalTitle("Pick a date range"), close_button=True),
+        dbc.ModalBody([
+            dcc.DatePickerRange(
+                id="t_range",
+                minimum_nights=0,
+                display_format="YYYY-MM-DD",
             ),
+            html.Div(
+                dbc.Button("OK", id="t_cal_ok", color="primary", style={"marginTop": "10px"}),
+                style={"marginTop": "10px", "textAlign": "right"},
+            ),
+        ]),
+    ],
+),
 
             dbc.Row([
                 dbc.Col(dbc.Button("Generate", id="t_go", color="primary"), md="auto"),
@@ -483,6 +513,31 @@ def update_ba_date_range(stored):
     d_min = df[time_col].min().date()
     d_max = df[time_col].max().date()
     return d_min.isoformat(), d_max.isoformat(), d_min, d_max
+    @dash.callback(
+    Output("t_from_display", "value"),
+    Output("t_to_display", "value"),
+    Output("t_range", "min_date_allowed"),
+    Output("t_range", "max_date_allowed"),
+    Input("stored-data", "data"),
+)
+def update_t_date_range(stored):
+    """
+    Muestra el rango de fechas disponible para Target y limita el calendario.
+    """
+    df, time_col = _get_df(stored)
+    if df is None or time_col is None:
+        today = date.today()
+        return "", "", today.replace(year=today.year - 1), today
+
+    df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
+    df = df.dropna(subset=[time_col])
+    if df.empty:
+        today = date.today()
+        return "", "", today.replace(year=today.year - 1), today
+
+    d_min = df[time_col].min().date()
+    d_max = df[time_col].max().date()
+    return d_min.isoformat(), d_max.isoformat(), d_min, d_max
 # -----------------------------
 # Calendar (BA) — year jump & modal unified
 # -----------------------------
@@ -571,39 +626,57 @@ def step_t_year(prev, nxt, today, current):
 
 @dash.callback(
     Output("t_range", "initial_visible_month"),
-    Input("t_jump_month", "value"),
-    Input("t_year_store", "data"),
-    Input("t_today", "n_clicks"),
-    prevent_initial_call=True,
+    Input("stored-data", "data"),
 )
-def jump_t_month(month, year, today):
-    if dash.callback_context.triggered[0]["prop_id"].startswith("t_today"):
-        return date.today().replace(day=1)
-    month = month or date.today().month
-    year  = year  or date.today().year
-    return date(int(year), int(month), 1)
+def set_t_initial_month(stored):
+    """
+    El calendario de Target abre en el mes donde empieza la data.
+    """
+    df, time_col = _get_df(stored)
+    if df is not None and time_col is not None:
+        df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
+        df = df.dropna(subset=[time_col])
+        if not df.empty:
+            d_min = df[time_col].min().date()
+            return d_min.replace(day=1)
+
+    return date.today().replace(day=1)
 
 @dash.callback(
     Output("t_cal_modal", "is_open"),
     Output("t_range_display", "value"),
-    Input("t_cal_btn", "n_clicks"),       # botón 📅
-    Input("t_range", "start_date"),
-    Input("t_range", "end_date"),
+    Input("t_cal_btn", "n_clicks"),   # abrir calendario
+    Input("t_cal_ok", "n_clicks"),    # confirmar rango
+    State("t_range", "start_date"),
+    State("t_range", "end_date"),
     State("t_cal_modal", "is_open"),
     prevent_initial_call=True,
 )
-def t_modal_and_display(btn, start, end, is_open):
-    ctx = dash.callback_context.triggered[0]["prop_id"].split(".")[0]
-    if ctx == "t_cal_btn":
-        return (not is_open), no_update
-    if (ctx in {"t_range.start_date", "t_range.end_date"}) and start and end:
-        try:
-            s = pd.to_datetime(start).date().isoformat()
-            e = pd.to_datetime(end).date().isoformat()
-        except Exception:
-            s, e = start, end
-        return False, f"{s} → {e}"
+def t_modal_and_display(open_clicks, ok_clicks, start, end, is_open):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return is_open, no_update
+
+    trigger = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    # Abrir el calendario
+    if trigger == "t_cal_btn":
+        return True, no_update
+
+    # Cerrar con OK y actualizar el texto
+    if trigger == "t_cal_ok":
+        if start and end:
+            try:
+                s = pd.to_datetime(start).date().isoformat()
+                e = pd.to_datetime(end).date().isoformat()
+            except Exception:
+                s, e = start, end
+            return False, f"{s} → {e}"
+        # Si no hay fechas elegidas, solo cerrar
+        return False, no_update
+
     return is_open, no_update
+
 
 # -----------------------------
 # Before vs After generate
