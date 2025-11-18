@@ -217,24 +217,24 @@ def handle_uploaded_file(contents, remove_clicks, filename):
     return None, "Drop or Select a File"
 
 # Callback para manejar la barra de progreso y el modal
-@app.callback(
-    [Output('loading-modal', 'is_open'),
-     Output('progress-bar', 'value'),
-     Output('progress-bar', 'label')],
-    [Input('upload-data', 'contents'),
-     Input('interval-progress', 'n_intervals')],
-    [State('loading-modal', 'is_open')],
-    prevent_initial_call=True
-)
-def handle_upload_and_progress(contents, n_intervals, is_open):
-    if contents is not None and not is_open:
-        return True, 0, "0%"
-    if is_open:
-        progress = (n_intervals + 1) * 10
-        if progress >= 100:
-            return False, 100, "Carga completa"
-        return True, progress, f"{progress}%"
-    return is_open, 0, ""
+#@app.callback(
+    #[Output('loading-modal', 'is_open'),
+   #  Output('progress-bar', 'value'),
+   #  Output('progress-bar', 'label')],
+   # [Input('upload-data', 'contents'),
+   #  Input('interval-progress', 'n_intervals')],
+  #  [State('loading-modal', 'is_open')],
+   # prevent_initial_call=True
+#)
+#def handle_upload_and_progress(contents, n_intervals, is_open):
+   # if contents is not None and not is_open:
+      #  return True, 0, "0%"
+    #if is_open:
+    #    progress = (n_intervals + 1) * 10
+      #  if progress >= 100:
+      #      return False, 100, "Carga completa"
+     #   return True, progress, f"{progress}%"
+   # return is_open, 0, ""
 
 # Callback para almacenar el valor de "Project Name" en dcc.Store
 @app.callback(
@@ -248,3 +248,4 @@ def store_project_name(project_name):
 if __name__ == "__main__":
     # Antes: app.run_server(debug=True)
     app.run(host="127.0.0.1", port=8050, debug=True, use_reloader=False)
+
