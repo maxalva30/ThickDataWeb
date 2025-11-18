@@ -38,10 +38,17 @@ app.layout = html.Div(
                 "alignItems": "center",
                 "padding": "20px",
             },
-            children=[
-                html.Img(src="/assets/MetsoLogo.png", className="logo"),
-                html.H1("Thickener Operational Data Analysis", className="main-title"),
-            ],
+    children=[
+        dcc.Link(
+            href="/",  # siempre lleva a la página principal (index)
+            children=html.Img(
+                src='/assets/MetsoLogo.png',
+                className="logo",
+                style={"cursor": "pointer"}
+            ),
+        ),
+        html.H1("Thickener Operational Data Analysis", className="main-title"),
+    ],
         ),
 
         dcc.Location(id="url", refresh=False),
@@ -423,3 +430,4 @@ def store_project_meta(project_name, operation_name, thickener_type, user_name):
 # =========================
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8050, debug=True, use_reloader=False)
+
