@@ -354,7 +354,11 @@ layout = html.Div(
 
         html.Hr(),
         html.H3("Time Series Analysis"),
-        dcc.Graph(id="time-series-graph", figure=go.Figure()),
+        dcc.Graph(
+    id="time-series-graph",
+    figure=go.Figure(),
+    style={"height": "78vh"},   # ocupa ~80% de la altura de la ventana
+),
     ],
 )
 
@@ -428,7 +432,6 @@ def update_time_series(_, stored, primaries, secondaries, period, line1_val, axi
         title="Time Series Analysis",
         xaxis_title="Time",
         yaxis_title="Primary Y axis",
-        height=650,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
     )
     return fig
