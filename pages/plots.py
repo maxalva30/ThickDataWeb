@@ -513,7 +513,7 @@ def update_ba_date_range(stored):
     d_min = df[time_col].min().date()
     d_max = df[time_col].max().date()
     return d_min.isoformat(), d_max.isoformat(), d_min, d_max
-    @dash.callback(
+   @dash.callback(
     Output("t_from_display", "value"),
     Output("t_to_display", "value"),
     Output("t_range", "min_date_allowed"),
