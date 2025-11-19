@@ -61,7 +61,7 @@ app.layout = html.Div(
         # Footer
         html.Div(
             className="footer",
-            children=[html.P("Copyright © 2024 Metso")],
+            children=[html.P("Copyright © 2025 Metso")],
             style={"textAlign": "center", "padding": "10px"},
         ),
     ],
@@ -430,4 +430,5 @@ def store_project_meta(project_name, operation_name, thickener_type, user_name):
 # =========================
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8050, debug=True, use_reloader=False)
+
 
