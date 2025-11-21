@@ -337,11 +337,21 @@ layout = html.Div(
                         style={"width":"110px"},
                     ),
                 ], style={"display":"flex","alignItems":"center","gap":"6px"}),
-                html.Div(children=[
+                html.Div(
+                  children=[
                     dbc.Button("Plot graph", id="plot-button", color="primary", className="me-2"),
                     dbc.Button("Save", id="save-button", color="secondary", outline=True),
+                    dbc.Button(
+                        "Add to report",
+                        id="ts_add",
+                        color="success",
+                        outline=True,
+                        className="ms-2",
+                    ),
                     dcc.Download(id="download-graph"),
-                ], style={"marginLeft":"auto"}),
+                ],
+                style={"marginLeft": "auto"},
+            ),
             ],
         ),
 
@@ -786,6 +796,7 @@ def generate_target(_, start, end, param, target, tol, stored):
     Output("report-items", "data"),
     Input("ba_add", "n_clicks"),
     Input("t_add", "n_clicks"),
+    Input("ts_add", "n_clicks"),              # 🔹 nuevo input para el gráfico principal
     State("report-items", "data"),
     # BA
     State("ba_graph", "figure"),
@@ -799,18 +810,32 @@ def generate_target(_, start, end, param, target, tol, stored):
     State("t_tol", "value"),
     State("t_range", "start_date"),
     State("t_range", "end_date"),
+    # Time series principal
+    State("time-series-graph", "figure"),
+    State("primary-variable", "value"),
+    State("secondary-variable", "value"),
+    State("time-period", "value"),
     State("stored-data", "data"),
     prevent_initial_call=True,
 )
-def add_to_report(ba_clicks, t_clicks, items,
-                  ba_fig, ba_summary, ba_param, ba_cutoff,
-                  t_fig, t_param, t_target, t_tol, t_start, t_end, stored):
+def add_to_report(
+    ba_clicks, t_clicks, ts_clicks,
+    items,
+    # BA
+    ba_fig, ba_summary, ba_param, ba_cutoff,
+    # Target
+    t_fig, t_param, t_target, t_tol, t_start, t_end,
+    # Time series
+    ts_fig, primaries, secondaries, period,
+    stored,
+):
     items = items or []
     ctx = dash.callback_context
     if not ctx.triggered:
         return items
     trig = ctx.triggered[0]["prop_id"].split(".")[0]
 
+    # ---------- Before vs After ----------
     if trig == "ba_add":
         if not ba_fig or not ba_param or not ba_cutoff:
             return items
@@ -828,24 +853,31 @@ def add_to_report(ba_clicks, t_clicks, items,
             entry["html"] = _fig_to_inline_html(fig)
         return items + [entry]
 
+    # ---------- Target compliance ----------
     if trig == "t_add":
         if not t_fig or not t_param or t_target is None or t_tol is None or not (t_start and t_end):
             return items
+
         df, time_col = _get_df(stored)
         if df is None:
             return items
+
         start_dt = pd.to_datetime(t_start)
         end_dt   = pd.to_datetime(t_end) + pd.Timedelta(days=1)
         dff = df[(df[time_col] >= start_dt) & (df[time_col] < end_dt)].copy()
         if dff.empty:
             return items
+
         low, high = t_target - t_tol, t_target + t_tol
         below  = int((dff[t_param] < low).sum())
         within = int(((dff[t_param] >= low) & (dff[t_param] <= high)).sum())
         above  = int((dff[t_param] > high).sum())
         pct_in = 100 * within / len(dff)
-        summary = (f"Window: {t_start} to {t_end} | Target: {t_target} ±{t_tol}  →  "
-                   f"Below={below}, Within={within}, Above={above}  ({pct_in:.1f}% within)")
+
+        summary = (
+            f"Window: {t_start} to {t_end} | Target: {t_target} ±{t_tol}  →  "
+            f"Below={below}, Within={within}, Above={above}  ({pct_in:.1f}% within)"
+        )
 
         fig = go.Figure(t_fig)
         img_b64 = _fig_to_base64_png(fig)
@@ -861,7 +893,42 @@ def add_to_report(ba_clicks, t_clicks, items,
             entry["html"] = _fig_to_inline_html(fig)
         return items + [entry]
 
+    # ---------- Time series principal ----------
+    if trig == "ts_add":
+        # si el gráfico está vacío, no hacemos nada
+        if not ts_fig or not ts_fig.get("data"):
+            return items
+
+        fig = go.Figure(ts_fig)
+        img_b64 = _fig_to_base64_png(fig)
+
+        primaries = primaries or []
+        secondaries = secondaries or []
+        period_txt = period or "raw data"
+
+        meta_parts = []
+        if primaries:
+            meta_parts.append("Primary: " + ", ".join(primaries))
+        if secondaries:
+            meta_parts.append("Secondary: " + ", ".join(secondaries))
+        meta_parts.append(f"Resample: {period_txt}")
+        meta = " | ".join(meta_parts)
+
+        entry = {
+            "type": "timeseries",
+            "title": "Main Time Series Analysis",
+            "meta": meta,
+            "summary": "",
+        }
+        if img_b64:
+            entry["image"] = img_b64
+        else:
+            entry["html"] = _fig_to_inline_html(fig)
+
+        return items + [entry]
+
     return items
+
 
 # -----------------------------
 # Print report (HTML)
