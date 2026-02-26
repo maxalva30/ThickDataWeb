@@ -13,22 +13,24 @@
     justify-content: space-between;
     padding: 10px 20px;
     width: 100%;
-    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.1);  /* Sombra gris */
-    border-bottom: 2px solid #ccc;  /* Línea divisoria gris clara */
-    background-color: #fff;  /* Fondo blanco para el encabezado */
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.35);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(10, 20, 40, 0.75); /* antes #fff */
+    backdrop-filter: blur(10px);
 }
 
 /* Logo */
 .logo {
     height: 60px;
     width: auto;
+    filter: brightness(0) invert(1);  /* vuelve texto negro -> blanco */
 }
 
 /* Título principal */
 .main-title {
     font-family: 'Arial', sans-serif;
     font-size: 2.5em;
-    color: #333;
+    color: #f5f5f5;
     text-align: center;
     flex-grow: 1;
 }
@@ -59,19 +61,26 @@
 
 /* Estilo de las celdas de etiquetas */
 .label-cell {
-    padding: 10px;
-    font-weight: bold;
-    background-color: black;
-    color: white;
-    width: 200px;
+    padding: 6px 12px;  /* antes 10px 14px → más bajitas */
+    font-size: 0.85rem; 
+    font-weight: 500;   /* un poco menos bold */
+    background: linear-gradient(135deg, #0f63ff, #0a46b7);
+    color: #ffffff;
+    width: 200px;       /* ligeramente más angostas */
+    border-radius: 6px 0 0 6px;
+    border-right: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28); /* sombra más suave */
+    line-height: 1.2;
 }
 
 /* Estilo de las celdas de entrada */
 .input-cell {
-    padding: 10px;
-    width: 300px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+    padding: 6px 10px;  /* reduce altura del conjunto */
+    width: 290px;
+    border-radius: 0 6px 6px 0;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: rgba(3, 15, 35, 0.45);
+    color: #ffffff;
 }
 
 /* Estilo del dropdown */
@@ -102,18 +111,19 @@
     margin-right: 50px;
 }
 
-/* Pie de página con sombra */
+/* Pie de página oscuro */
 .footer {
     text-align: center;
     padding: 10px;
-    background-color: #f1f1f1;
+    background-color: #050f23;          /* fondo casi negro/azul marino */
     font-size: 0.9em;
-    color: #555;
+    color: #f5f5f5;                      /* texto blanco */
     width: 100%;
-    box-shadow: 0px -4px 4px rgba(0, 0, 0, 0.1);
-    border-top: 2px solid #ccc;
-    position: fixed
+    box-shadow: 0px -4px 10px rgba(0, 0, 0, 0.4);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    position: fixed;
     bottom: 0;
+    left: 0;
 }
 
 /* ---------------------------------- */
@@ -122,28 +132,19 @@
 
 /* Contenedor para organizar las dos columnas */
 .content-container {
+    max-width: 1200px;        /* ancho máximo del panel central */
+    margin: 20px auto 40px;   /* deja respiración arriba/abajo y centra */
+    padding: 0 20px;
     display: flex;
-    justify-content: space-between;  /* Espacio entre columnas */
-    margin-top: 10px;  /* Reducir margen superior */
-    padding: 0 20px;  /* Ajuste del espacio horizontal */
+    flex-wrap: wrap;          /* permite que el contenido baje a una segunda fila */
+    gap: 24px;                /* espacio homogéneo entre columnas */
+    align-items: flex-start;
 }
 
-/* Columna izquierda - Información del formulario */
-.left-column {
-    flex: 0 0 35%;  /* Toma el 35% del espacio */
-    padding-right: 20px;
-    margin-left: 0;  /* Pegado a la izquierda */
-    margin-top: 0;  /* Reducir margen superior */
-}
-
-/* Columna derecha - Análisis de datos */
+.left-column,
 .right-column {
-    flex: 0 0 65%;  /* Toma el 65% del espacio */
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start;  /* Alineado al inicio */
-    padding-left: 0;  /* Sin padding izquierdo */
+    flex: 1 1 0;      /* columnas flexibles, mismo peso */
+    padding: 20px 10px;
 }
 
 /* Contenedor de análisis */
@@ -183,6 +184,35 @@
 }
 
 /* ---------------------------------- */
+/* Layout específico para la página de plots */
+/* ---------------------------------- */
+
+.plots-content-container {
+    width: 150%;                 /* más ancho que el content-container del index */
+    max-width: 1700px;          /* permite que el gráfico respire más */
+    margin: 20px auto 40px;     /* centrado pero ocupando casi todo el viewport */
+    padding: 0 20px;
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+/* Step 1: columna angosta (controles) */
+.plots-left-column {
+    flex: 0 0 26%;              /* ~25–27% del ancho total */
+    max-width: 420px;           /* límite razonable para que no se haga gigante */
+    padding: 20px 10px;
+}
+
+/* Step 2: columna ancha (gráfico principal) */
+.plots-right-column {
+    flex: 1 1 0;                /* ocupa todo lo demás (~70–75%) */
+    min-width: 0;
+    padding: 20px 10px;
+}
+
+
+/* ---------------------------------- */
 /* Ajustes para alinear subtítulo y análisis */
 /* ---------------------------------- */
 
@@ -200,15 +230,15 @@
 /* Ajustes para plots */
 /* ---------------------------------- */
 
-/* Contenedor del gráfico */
-.plot-content {
-    display: flex;
-    justify-content: center;  /* Centrar el gráfico horizontalmente */
-    align-items: center;
-    background-color: #f9f9f9; /* Fondo ligero para diferenciar */
-    padding: 20px;
-    border-radius: 8px;
-    margin-top: 10px;
+/* Contenedor del gráfico */ 
+.plot-content { 
+   display: flex; 
+   justify-content: center; /* Centrar el gráfico horizontalmente */ 
+   align-items: center; 
+   background-color: #f9f9f9; /* Fondo ligero para diferenciar */ 
+   padding: 20px; 
+   border-radius: 8px; 
+   margin-top: 10px; 
 }
 
 /* Botón de generación de gráfico */
@@ -233,4 +263,112 @@
     width: 100%;  /* Hacer que el gráfico ocupe el 100% del contenedor */
     height: 700px;  /* Altura del gráfico */
 }
+.card {
+    background-color: rgba(255, 255, 255, 0.14);   /* MÁS transparente */
+    border-radius: 10px;
+    padding: 18px 22px;
+    border: 1px solid rgba(255, 255, 255, 0.35);   /* borde más suave */
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.40);   /* un poco más suave */
+    margin-bottom: 10px;
+    backdrop-filter: blur(8px);                   /* blur fuerte = efecto vidrio */
+}
+.step-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #777;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
 
+.section-help {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+/* Labels dentro del panel de time series (plots.py) */
+.control-label {
+    font-size: 12px;
+    color: #f5f7fb;          /* blanco suave para buen contraste */
+    margin-bottom: 2px;
+}
+
+/* Fila de botones Plot / Save / Add... */
+.controls-button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.upload-container {
+    position: relative;
+    margin-top: 10px;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.checkbox-list {
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.primary-button {
+    background-color: #007bff;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 18px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.primary-button:hover {
+    background-color: #0064d1;
+}
+
+.analysis-img {
+    width: 220px;
+    height: auto;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+/* Fondo general con foto del espesador */
+body {
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background: #0b1525 url('/assets/thickener_bg.png') center center / cover no-repeat fixed;
+    position: relative;
+}
+
+/* Capa oscura suave encima de la foto para que no distraiga */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 15, 35, 0.65);  /* oscurece un poco la imagen */
+    z-index: -1;
+}
+
+.section-title {
+    color: #f5f7fb;           /* casi blanco */
+    font-weight: 600;
+}
+
+.step-title {
+    color: #d9e2ff;           /* azul muy claro */
+    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+}
+
+.section-help,
+.card p,
+.card li {
+    color: #eef1f7;           /* texto claro dentro de las cards */
+}
+/* Texto de los checkboxes en blanco para Data Transformation */
+.checkbox-list label {
+    color: #ffffff;
+}
